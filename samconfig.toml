@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "tc4-feedback"
+
+[default.deploy.parameters]
+region = "us-east-2"
+profile = "tc4"
+resolve_s3 = true
+s3_prefix = "tc4-feedback"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false

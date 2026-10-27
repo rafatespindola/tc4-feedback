@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TC4 Feedback - recebimento de avaliacoes (etapa 1)
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+
+Globals:
+  Function:
+    Runtime: java21
+    Architectures: [arm64]
+    MemorySize: 1024
+    Timeout: 15
+    Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+
+Resources:
+
+  # ---------- Dados ----------
+  AvaliacoesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Avaliacoes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: dia
+          AttributeType: S
+        - AttributeName: criadoEm#id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: dia
+          KeyType: HASH
+        - AttributeName: criadoEm#id
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true        # KMS (chave gerenciada aws/dynamodb)
+
+  # ---------- API ----------
+  AvaliacaoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: tc4-feedback-api
+      StageName: !Ref Stage
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: tc4-feedback-estudantes
+          Throttle:
+            RateLimit: 10
+            BurstLimit: 20
+          Quota:
+            Limit: 10000
+            Period: DAY
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
+
+  # ---------- recebe-avaliacao ----------
+  RecebeAvaliacaoLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/tc4-recebe-avaliacao
+      RetentionInDays: 14
+
+  RecebeAvaliacaoRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: recebe-avaliacao-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GravarAvaliacao
+                Effect: Allow
+                Action: dynamodb:PutItem
+                Resource: !GetAtt AvaliacoesTable.Arn
+              - Sid: EscreverLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${RecebeAvaliacaoLogGroup.Arn}'
+
+  RecebeAvaliacaoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tc4-recebe-avaliacao
+      CodeUri: recebe-avaliacao/target/function.zip
+      Role: !GetAtt RecebeAvaliacaoRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref RecebeAvaliacaoLogGroup
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: live       # SnapStart só vale para versões publicadas; a API chama o alias
+      Environment:
+        Variables:
+          TABELA_AVALIACOES: !Ref AvaliacoesTable
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+      Events:
+        PostAvaliacao:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AvaliacaoApi
+            Path: /avaliacao
+            Method: POST
+
+Outputs:
+  ApiUrl:
+    Description: Endpoint POST /avaliacao
+    Value: !Sub 'https://${AvaliacaoApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/avaliacao'
+  ApiKeyId:
+    Description: "Id da API key (valor: aws apigateway get-api-key --api-key <id> --include-value)"
+    Value: !Ref AvaliacaoApiApiKey
+  TabelaAvaliacoes:
+    Value: !Ref AvaliacoesTable
+  RecebeAvaliacaoFunctionAlias:
+    Value: !Ref RecebeAvaliacaoFunctionAliaslive
