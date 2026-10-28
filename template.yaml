@@ -1,11 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: TC4 Feedback - recebimento de avaliacoes (etapa 1)
+Description: TC4 Feedback - recebimento de avaliacoes e alertas criticos
 
 Parameters:
   Stage:
     Type: String
     Default: prod
+  AdminEmail:
+    Type: String
+    Description: E-mail que recebe os alertas criticos (fora do samconfig, pois o repositorio e publico)
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
 
 Globals:
   Function:
@@ -35,6 +39,22 @@ Resources:
           KeyType: RANGE
       SSESpecification:
         SSEEnabled: true        # KMS (chave gerenciada aws/dynamodb)
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  # ---------- Alertas ----------
+  AlertasCriticosTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: alertas-criticos
+      KmsMasterKeyId: alias/aws/sns
+
+  AlertasCriticosEmail:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertasCriticosTopic
+      Protocol: email
+      Endpoint: !Ref AdminEmail
 
   # ---------- API ----------
   AvaliacaoApi:
@@ -120,6 +140,80 @@ Resources:
             Path: /avaliacao
             Method: POST
 
+  # ---------- notifica-urgencia ----------
+  NotificaUrgenciaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/tc4-notifica-urgencia
+      RetentionInDays: 14
+
+  NotificaUrgenciaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: notifica-urgencia-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: LerStream
+                Effect: Allow
+                Action:
+                  - dynamodb:DescribeStream
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:ListStreams
+                Resource: !Sub '${AvaliacoesTable.Arn}/stream/*'
+              - Sid: PublicarAlerta
+                Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref AlertasCriticosTopic
+              - Sid: EscreverLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${NotificaUrgenciaLogGroup.Arn}'
+
+  NotificaUrgenciaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tc4-notifica-urgencia
+      CodeUri: notifica-urgencia/target/function.zip
+      Role: !GetAtt NotificaUrgenciaRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref NotificaUrgenciaLogGroup
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: live
+      Environment:
+        Variables:
+          TOPICO_ALERTAS: !Ref AlertasCriticosTopic
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+      Events:
+        AvaliacaoCritica:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt AvaliacoesTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 10
+            MaximumRetryAttempts: 3
+            BisectBatchOnFunctionError: true
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            FilterCriteria:         # só inserções CRITICA chegam na função (não há cobrança pelos descartados)
+              Filters:
+                - Pattern: '{"eventName": ["INSERT"], "dynamodb": {"NewImage": {"urgencia": {"S": ["CRITICA"]}}}}'
+
 Outputs:
   ApiUrl:
     Description: Endpoint POST /avaliacao
@@ -131,3 +225,5 @@ Outputs:
     Value: !Ref AvaliacoesTable
   RecebeAvaliacaoFunctionAlias:
     Value: !Ref RecebeAvaliacaoFunctionAliaslive
+  TopicoAlertasCriticos:
+    Value: !Ref AlertasCriticosTopic

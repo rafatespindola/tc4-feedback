@@ -8,7 +8,7 @@ Plataforma serverless (AWS, `us-east-2`) para receber avaliações de aulas, ale
 |---|---|
 | `core` | ✅ `Avaliacao`, `Urgencia` e regra de classificação |
 | `recebe-avaliacao` | ✅ `POST /avaliacao` → DynamoDB |
-| `notifica-urgencia` | ⏳ próxima etapa |
+| `notifica-urgencia` | ✅ DynamoDB Stream (filtro `CRITICA`) → SNS `alertas-criticos` → e-mail |
 | `gera-relatorio` | ⏳ próxima etapa |
 
 ## Pré-requisitos
@@ -26,8 +26,11 @@ mvn verify          # testes + recebe-avaliacao/target/function.zip
 ```bash
 aws login --profile tc4
 mvn -DskipTests package
-sam deploy          # usa samconfig.toml (stack tc4-feedback, us-east-2)
+sam deploy --parameter-overrides AdminEmail=<email-do-admin>   # stack tc4-feedback, us-east-2
 ```
+
+O e-mail dos administradores é passado no deploy (não fica no `samconfig.toml`, pois o repositório é público).
+Na primeira vez, a AWS envia um e-mail de confirmação da assinatura do tópico `alertas-criticos` — os alertas só chegam depois de clicar em **Confirm subscription**.
 
 ## Uso
 
@@ -47,6 +50,12 @@ curl -i -X POST "$URL" -H "x-api-key: $KEY" -H 'Content-Type: application/json' 
 | `201` | criado — corpo com `id`, `urgencia`, `dataEnvio` |
 | `400` | nota fora de 0–10 (ou não inteira), descrição vazia, JSON inválido |
 | `403` | sem API key |
+
+## Alertas críticos
+
+Toda avaliação com nota 0–3 gera um e-mail para os administradores com descrição, urgência e data de envio
+(horário de Brasília e UTC). O filtro fica na event source mapping do stream: avaliações não críticas nem invocam a função.
+Se o SNS falhar, só o registro com falha é reprocessado (até 3 tentativas).
 
 ## Regra de urgência
 

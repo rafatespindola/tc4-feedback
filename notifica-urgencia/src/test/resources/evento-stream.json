@@ -1,0 +1,47 @@
+{
+  "Records": [
+    {
+      "eventID": "c4ca4238a0b923820dcc509a6f75849b",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "us-east-2",
+      "dynamodb": {
+        "ApproximateCreationDateTime": 1793196191,
+        "Keys": {
+          "dia": {"S": "2026-10-27"},
+          "criadoEm#id": {"S": "2026-10-27T23:12:29Z#85c3f24c-2166-4802-ba96-9dc4acc7c201"}
+        },
+        "NewImage": {
+          "dia": {"S": "2026-10-27"},
+          "criadoEm#id": {"S": "2026-10-27T23:12:29Z#85c3f24c-2166-4802-ba96-9dc4acc7c201"},
+          "id": {"S": "85c3f24c-2166-4802-ba96-9dc4acc7c201"},
+          "descricao": {"S": "Áudio da aula cortando"},
+          "nota": {"N": "2"},
+          "urgencia": {"S": "CRITICA"},
+          "dataEnvio": {"S": "2026-10-27T23:12:29Z"}
+        },
+        "SequenceNumber": "111",
+        "SizeBytes": 220,
+        "StreamViewType": "NEW_IMAGE"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:us-east-2:000000000000:table/Avaliacoes/stream/2026-10-28T00:00:00.000"
+    },
+    {
+      "eventID": "c81e728d9d4c2f636f067f89cc14862c",
+      "eventName": "INSERT",
+      "eventSource": "aws:dynamodb",
+      "dynamodb": {
+        "NewImage": {
+          "id": {"S": "0b1d4c1e-9a43-4d55-9e8e-2b2f8a0c7f10"},
+          "descricao": {"S": "Professor não apareceu"},
+          "nota": {"N": "0"},
+          "urgencia": {"S": "CRITICA"},
+          "dataEnvio": {"S": "2026-10-28T12:00:00Z"}
+        },
+        "SequenceNumber": "222",
+        "StreamViewType": "NEW_IMAGE"
+      }
+    }
+  ]
+}
