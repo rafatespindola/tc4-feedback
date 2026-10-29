@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: TC4 Feedback - recebimento de avaliacoes e alertas criticos
+Description: TC4 Feedback - avaliacoes, alertas criticos e relatorio semanal
 
 Parameters:
   Stage:
@@ -53,6 +53,57 @@ Resources:
     Type: AWS::SNS::Subscription
     Properties:
       TopicArn: !Ref AlertasCriticosTopic
+      Protocol: email
+      Endpoint: !Ref AdminEmail
+
+  # ---------- Relatório ----------
+  RelatoriosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms        # chave gerenciada aws/s3
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: Enabled
+
+  RelatoriosBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RelatoriosBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SomenteHttps
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt RelatoriosBucket.Arn
+              - !Sub '${RelatoriosBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  RelatorioSemanalTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: relatorio-semanal
+      KmsMasterKeyId: alias/aws/sns
+
+  RelatorioSemanalEmail:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref RelatorioSemanalTopic
       Protocol: email
       Endpoint: !Ref AdminEmail
 
@@ -214,6 +265,81 @@ Resources:
               Filters:
                 - Pattern: '{"eventName": ["INSERT"], "dynamodb": {"NewImage": {"urgencia": {"S": ["CRITICA"]}}}}'
 
+  # ---------- gera-relatorio ----------
+  GeraRelatorioLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/tc4-gera-relatorio
+      RetentionInDays: 14
+
+  GeraRelatorioRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: gera-relatorio-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ConsultarAvaliacoes
+                Effect: Allow
+                Action: dynamodb:Query
+                Resource: !GetAtt AvaliacoesTable.Arn
+              - Sid: SalvarRelatorio
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub '${RelatoriosBucket.Arn}/relatorios/*'
+              - Sid: PublicarRelatorio
+                Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref RelatorioSemanalTopic
+              - Sid: EscreverLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${GeraRelatorioLogGroup.Arn}'
+
+  GeraRelatorioFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tc4-gera-relatorio
+      CodeUri: gera-relatorio/target/function.zip
+      Role: !GetAtt GeraRelatorioRole.Arn
+      Timeout: 60
+      LoggingConfig:
+        LogGroup: !Ref GeraRelatorioLogGroup
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: live
+      Environment:
+        Variables:
+          TABELA_AVALIACOES: !Ref AvaliacoesTable
+          BUCKET_RELATORIOS: !Ref RelatoriosBucket
+          TOPICO_RELATORIO: !Ref RelatorioSemanalTopic
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+      Events:
+        Semanal:
+          Type: ScheduleV2
+          Properties:
+            Name: tc4-relatorio-semanal
+            Description: Relatorio da semana anterior (seg a dom), toda segunda 08:00 BRT
+            ScheduleExpression: cron(0 8 ? * MON *)
+            ScheduleExpressionTimezone: America/Sao_Paulo
+            Input: '{}'
+            RetryPolicy:
+              MaximumRetryAttempts: 2
+              MaximumEventAgeInSeconds: 3600
+
 Outputs:
   ApiUrl:
     Description: Endpoint POST /avaliacao
@@ -227,3 +353,7 @@ Outputs:
     Value: !Ref RecebeAvaliacaoFunctionAliaslive
   TopicoAlertasCriticos:
     Value: !Ref AlertasCriticosTopic
+  TopicoRelatorioSemanal:
+    Value: !Ref RelatorioSemanalTopic
+  BucketRelatorios:
+    Value: !Ref RelatoriosBucket

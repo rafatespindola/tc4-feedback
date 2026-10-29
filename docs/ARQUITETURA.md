@@ -45,7 +45,7 @@ A função de recebimento **não sabe** que existe notificação: o desacoplamen
 
 | Atributo | Tipo | Exemplo |
 |---|---|---|
-| `dia` (PK) | String | `2026-10-27` |
+| `dia` (PK) | String (dia no horário de Brasília) | `2026-10-27` |
 | `criadoEm#id` (SK) | String | `2026-10-27T14:03:11Z#9f1c…` |
 | `id` | String (UUID) | |
 | `descricao` | String | |

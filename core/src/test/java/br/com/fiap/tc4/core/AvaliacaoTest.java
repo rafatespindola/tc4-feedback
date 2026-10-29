@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.Test;
@@ -38,9 +39,21 @@ class AvaliacaoTest {
     }
 
     @Test
-    void diaUsaUtc() {
-        Clock quaseMeiaNoiteBrt = Clock.fixed(Instant.parse("2026-10-28T01:30:00Z"), ZoneOffset.UTC);
-        assertThat(Avaliacao.nova("x", 5, quaseMeiaNoiteBrt).dia()).isEqualTo("2026-10-28");
+    void diaUsaHorarioDeBrasilia() {
+        // 01:30 UTC de 28/10 = 22:30 de 27/10 em Brasília
+        Clock noitePorBrasilia = Clock.fixed(Instant.parse("2026-10-28T01:30:00Z"), ZoneOffset.UTC);
+        Avaliacao a = Avaliacao.nova("x", 5, noitePorBrasilia);
+
+        assertThat(a.dia()).isEqualTo("2026-10-27");
+        assertThat(a.diaLocal()).isEqualTo(LocalDate.of(2026, 10, 27));
+        // a sort key continua em UTC (instante absoluto)
+        assertThat(a.criadoEmId()).startsWith("2026-10-28T01:30:00Z#");
+    }
+
+    @Test
+    void viradaDoDiaEmBrasilia() {
+        Clock meiaNoiteBrt = Clock.fixed(Instant.parse("2026-10-28T03:00:00Z"), ZoneOffset.UTC);
+        assertThat(Avaliacao.nova("x", 5, meiaNoiteBrt).dia()).isEqualTo("2026-10-28");
     }
 
     @Test

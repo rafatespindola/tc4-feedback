@@ -3,7 +3,7 @@ package br.com.fiap.tc4.core;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
@@ -18,6 +18,9 @@ import java.util.UUID;
  * @param dataEnvio instante do recebimento (UTC, precisão de segundos)
  */
 public record Avaliacao(String id, String descricao, int nota, Urgencia urgencia, Instant dataEnvio) {
+
+    /** Fuso de referência do negócio: define o dia da avaliação e as semanas do relatório. */
+    public static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
     public Avaliacao {
         Objects.requireNonNull(id, "id");
@@ -40,9 +43,14 @@ public record Avaliacao(String id, String descricao, int nota, Urgencia urgencia
                 clock.instant().truncatedTo(ChronoUnit.SECONDS));
     }
 
-    /** Partition key da tabela: dia (UTC) do envio, ex. {@code 2026-10-27}. */
+    /** Dia do envio no horário de Brasília. */
+    public LocalDate diaLocal() {
+        return LocalDate.ofInstant(dataEnvio, FUSO);
+    }
+
+    /** Partition key da tabela: dia do envio no horário de Brasília, ex. {@code 2026-10-27}. */
     public String dia() {
-        return LocalDate.ofInstant(dataEnvio, ZoneOffset.UTC).toString();
+        return diaLocal().toString();
     }
 
     /** Sort key da tabela: {@code criadoEm#id}, ordena por horário dentro do dia. */

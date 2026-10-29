@@ -9,7 +9,7 @@ Plataforma serverless (AWS, `us-east-2`) para receber avaliações de aulas, ale
 | `core` | ✅ `Avaliacao`, `Urgencia` e regra de classificação |
 | `recebe-avaliacao` | ✅ `POST /avaliacao` → DynamoDB |
 | `notifica-urgencia` | ✅ DynamoDB Stream (filtro `CRITICA`) → SNS `alertas-criticos` → e-mail |
-| `gera-relatorio` | ⏳ próxima etapa |
+| `gera-relatorio` | ✅ toda segunda 08:00 (Brasília) → JSON no S3 + e-mail via SNS `relatorio-semanal` |
 
 ## Pré-requisitos
 
@@ -30,7 +30,7 @@ sam deploy --parameter-overrides AdminEmail=<email-do-admin>   # stack tc4-feedb
 ```
 
 O e-mail dos administradores é passado no deploy (não fica no `samconfig.toml`, pois o repositório é público).
-Na primeira vez, a AWS envia um e-mail de confirmação da assinatura do tópico `alertas-criticos` — os alertas só chegam depois de clicar em **Confirm subscription**.
+Na primeira vez, a AWS envia um e-mail de confirmação para cada tópico (`alertas-criticos` e `relatorio-semanal`) — as mensagens só chegam depois de clicar em **Confirm subscription**.
 
 ## Uso
 
@@ -56,6 +56,24 @@ curl -i -X POST "$URL" -H "x-api-key: $KEY" -H 'Content-Type: application/json' 
 Toda avaliação com nota 0–3 gera um e-mail para os administradores com descrição, urgência e data de envio
 (horário de Brasília e UTC). O filtro fica na event source mapping do stream: avaliações não críticas nem invocam a função.
 Se o SNS falhar, só o registro com falha é reprocessado (até 3 tentativas).
+
+## Relatório semanal
+
+Toda segunda-feira às 08:00 (Brasília) o EventBridge Scheduler executa `tc4-gera-relatorio`, que consolida a
+**semana anterior fechada** (segunda a domingo): total, média das notas, quantidade por dia, quantidade por
+urgência e a lista de avaliações. O JSON completo fica em `s3://<bucket>/relatorios/<ano>/semana-<segunda>.json`
+e um resumo vai por e-mail.
+
+O dia de cada avaliação (chave `dia` da tabela) é o dia no **horário de Brasília**.
+
+Para gerar (ou regerar) o relatório de uma semana específica:
+
+```bash
+aws lambda invoke --function-name tc4-gera-relatorio:live --profile tc4 --region us-east-2 \
+  --cli-binary-format raw-in-base64-out --payload '{"inicio":"2026-10-26"}' /dev/stdout
+```
+
+`inicio` precisa ser uma segunda-feira. Sem `inicio` (`{}`), usa a semana anterior.
 
 ## Regra de urgência
 
