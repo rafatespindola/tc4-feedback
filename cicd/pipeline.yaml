@@ -286,6 +286,10 @@ Resources:
                       - !Sub 'sns.${AWS::Region}.amazonaws.com'
                       - !Sub 's3.${AWS::Region}.amazonaws.com'
                       - !Sub 'lambda.${AWS::Region}.amazonaws.com'
+              - Sid: TransformSam
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31'
               - Sid: EmailDoAdmin
                 Effect: Allow
                 Action: ssm:GetParameters
@@ -375,8 +379,7 @@ Resources:
             Push:
               - Branches:
                   Includes: [!Ref Branch]
-                FilePaths:
-                  Includes: ['**']
+                FilePaths:   # commits que só mexem nestes caminhos não disparam deploy
                   Excludes: ['docs/**', '**/*.md', '.github/**', 'cicd/**']
       Stages:
         - Name: Fonte
