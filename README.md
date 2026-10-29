@@ -23,13 +23,46 @@ mvn verify          # testes + recebe-avaliacao/target/function.zip
 
 ## Deploy
 
+### Automático (CI/CD)
+
+Todo push na `main` dispara o **AWS CodePipeline** `tc4-feedback`:
+
+```
+GitHub (main) ──CodeConnections──▶ CodeBuild: mvn verify + sam package ──▶ CloudFormation: stack tc4-feedback
+```
+
+- Sem chaves de acesso em lugar nenhum: o GitHub entra pela conexão `tc4-feedback-github` (CodeConnections)
+  e o CloudFormation usa uma role de deploy limitada aos recursos do projeto.
+- Mudanças só em `docs/`, `*.md`, `.github/` ou `cicd/` não disparam deploy.
+- O **GitHub Actions** (`.github/workflows/ci.yml`) roda os testes em todo push e pull request.
+- A infraestrutura do pipeline está em [`cicd/pipeline.yaml`](cicd/pipeline.yaml) (stack `tc4-feedback-cicd`):
+
+  ```bash
+  aws cloudformation deploy --stack-name tc4-feedback-cicd --template-file cicd/pipeline.yaml \
+    --capabilities CAPABILITY_IAM --profile tc4 --region us-east-2
+  ```
+
+  Depois de criar, autorize a conexão uma vez no console: **Developer Tools > Settings > Connections >
+  tc4-feedback-github > Update pending connection**.
+
+> Por que não GitHub Actions + OIDC? A política gerenciada do projeto (SCP) bloqueia `iam:*Provider*`,
+> então não é possível cadastrar o GitHub como provedor OIDC.
+
+### Manual
+
 ```bash
 aws login --profile tc4
 mvn -DskipTests package
-sam deploy --parameter-overrides AdminEmail=<email-do-admin>   # stack tc4-feedback, us-east-2
+sam deploy          # stack tc4-feedback, us-east-2
 ```
 
-O e-mail dos administradores é passado no deploy (não fica no `samconfig.toml`, pois o repositório é público).
+O e-mail dos administradores fica no Parameter Store (`/tc4-feedback/admin-email`), fora do repositório:
+
+```bash
+aws ssm put-parameter --name /tc4-feedback/admin-email --type String --value <email> --overwrite \
+  --profile tc4 --region us-east-2
+```
+
 Na primeira vez, a AWS envia um e-mail de confirmação para cada tópico (`alertas-criticos` e `relatorio-semanal`) — as mensagens só chegam depois de clicar em **Confirm subscription**.
 
 ## Uso

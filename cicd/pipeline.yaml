@@ -1,0 +1,433 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  TC4 Feedback - CI/CD: push na main do GitHub -> CodePipeline -> CodeBuild (mvn verify + sam package)
+  -> CloudFormation (stack tc4-feedback). Sem chaves de acesso: o GitHub entra via CodeConnections.
+
+Parameters:
+  RepositorioGitHub:
+    Type: String
+    Default: rafatespindola/tc4-feedback
+  Branch:
+    Type: String
+    Default: main
+  StackAplicacao:
+    Type: String
+    Default: tc4-feedback
+
+Resources:
+
+  # Fica PENDING até a autorização no console (Developer Tools > Settings > Connections)
+  GitHubConnection:
+    Type: AWS::CodeConnections::Connection
+    Properties:
+      ConnectionName: tc4-feedback-github
+      ProviderType: GitHub
+
+  ArtefatosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expira-artefatos
+            Status: Enabled
+            ExpirationInDays: 30
+
+  ArtefatosBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtefatosBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SomenteHttps
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt ArtefatosBucket.Arn
+              - !Sub '${ArtefatosBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  # ---------- CodeBuild: testes + empacotamento ----------
+  BuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/codebuild/tc4-feedback-build
+      RetentionInDays: 14
+
+  BuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: build-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${BuildLogGroup.Arn}'
+              - Sid: ArtefatosECache
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub '${ArtefatosBucket.Arn}/*'
+              - Sid: LocalizacaoDoBucket
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource: !GetAtt ArtefatosBucket.Arn
+              - Sid: RelatorioDeTestes
+                Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                Resource: !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/tc4-feedback-build-*'
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: tc4-feedback-build
+      Description: mvn verify + sam package
+      ServiceRole: !GetAtt BuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
+        EnvironmentVariables:
+          - Name: ARTIFACT_BUCKET
+            Value: !Ref ArtefatosBucket
+      Cache:
+        Type: S3
+        Location: !Sub '${ArtefatosBucket}/cache-maven'
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref BuildLogGroup
+      TimeoutInMinutes: 20
+
+  # ---------- CloudFormation: role que cria/atualiza os recursos da aplicação ----------
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: recursos-tc4-feedback
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Tabela
+                Effect: Allow
+                Action: 'dynamodb:*'
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Avaliacoes'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Avaliacoes/stream/*'
+              - Sid: Funcoes
+                Effect: Allow
+                Action: 'lambda:*'
+                Resource:
+                  - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:tc4-*'
+                  - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:event-source-mapping:*'
+              - Sid: EventSourceMappings
+                Effect: Allow
+                Action:
+                  - lambda:CreateEventSourceMapping
+                  - lambda:GetEventSourceMapping
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:DeleteEventSourceMapping
+                  - lambda:ListEventSourceMappings
+                Resource: '*'
+              - Sid: CodigoDasFuncoes
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${ArtefatosBucket.Arn}/*'
+              - Sid: Api
+                Effect: Allow
+                Action: 'apigateway:*'
+                Resource:
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/*'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/usageplans'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/usageplans/*'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys/*'
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/tags/*'
+              - Sid: Topicos
+                Effect: Allow
+                Action: 'sns:*'
+                Resource:
+                  - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alertas-criticos*'
+                  - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:relatorio-semanal*'
+              - Sid: BucketRelatorios
+                Effect: Allow
+                Action: 's3:*'
+                Resource: !Sub 'arn:aws:s3:::${StackAplicacao}-relatoriosbucket-*'
+              - Sid: Logs
+                Effect: Allow
+                Action: 'logs:*'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/tc4-*'
+              - Sid: LogsDescribe
+                Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: '*'
+              - Sid: RolesDaAplicacao
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${StackAplicacao}-*'
+              - Sid: Agendamento
+                Effect: Allow
+                Action: 'scheduler:*'
+                Resource: !Sub 'arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/tc4-*'
+              - Sid: AlarmesEPainel
+                Effect: Allow
+                Action: 'cloudwatch:*'
+                Resource:
+                  - !Sub 'arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:tc4-*'
+                  - !Sub 'arn:aws:cloudwatch::${AWS::AccountId}:dashboard/tc4-feedback'
+              - Sid: ChaveKmsCriar
+                Effect: Allow
+                Action:
+                  - kms:CreateKey
+                  - kms:ListAliases
+                Resource: '*'
+              - Sid: ChaveKmsGerenciar
+                Effect: Allow
+                Action:
+                  - kms:DescribeKey
+                  - kms:GetKeyPolicy
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyRotationStatus
+                  - kms:EnableKeyRotation
+                  - kms:DisableKeyRotation
+                  - kms:UpdateKeyDescription
+                  - kms:TagResource
+                  - kms:UntagResource
+                  - kms:ListResourceTags
+                  - kms:ScheduleKeyDeletion
+                  - kms:CreateAlias
+                  - kms:UpdateAlias
+                  - kms:DeleteAlias
+                Resource:
+                  - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                  - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/tc4-*'
+              - Sid: ChavesGerenciadasPelosServicos
+                Effect: Allow
+                Action:
+                  - kms:DescribeKey
+                  - kms:CreateGrant
+                  - kms:Decrypt
+                  - kms:GenerateDataKey*
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    kms:ViaService:
+                      - !Sub 'dynamodb.${AWS::Region}.amazonaws.com'
+                      - !Sub 'sns.${AWS::Region}.amazonaws.com'
+                      - !Sub 's3.${AWS::Region}.amazonaws.com'
+                      - !Sub 'lambda.${AWS::Region}.amazonaws.com'
+              - Sid: EmailDoAdmin
+                Effect: Allow
+                Action: ssm:GetParameters
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tc4-feedback/*'
+
+  # ---------- CodePipeline ----------
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: pipeline-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Artefatos
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub '${ArtefatosBucket.Arn}/*'
+              - Sid: BucketArtefatos
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:GetBucketVersioning
+                  - s3:ListBucket
+                Resource: !GetAtt ArtefatosBucket.Arn
+              - Sid: LerSomenteEsteRepositorio
+                Effect: Allow
+                Action: codeconnections:UseConnection
+                Resource: !Ref GitHubConnection
+                Condition:
+                  StringEquals:
+                    codeconnections:FullRepositoryId: !Ref RepositorioGitHub
+              - Sid: Build
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt BuildProject.Arn
+              - Sid: Deploy
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:GetTemplate
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${StackAplicacao}/*'
+              - Sid: TransformSam
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31'
+              - Sid: PassarRoleDeDeploy
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt DeployRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: tc4-feedback
+      PipelineType: V2
+      ExecutionMode: QUEUED
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtefatosBucket
+      Triggers:
+        - ProviderType: CodeStarSourceConnection
+          GitConfiguration:
+            SourceActionName: GitHub
+            Push:
+              - Branches:
+                  Includes: [!Ref Branch]
+                FilePaths:
+                  Includes: ['**']
+                  Excludes: ['docs/**', '**/*.md', '.github/**', 'cicd/**']
+      Stages:
+        - Name: Fonte
+          Actions:
+            - Name: GitHub
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !Ref GitHubConnection
+                FullRepositoryId: !Ref RepositorioGitHub
+                BranchName: !Ref Branch
+                OutputArtifactFormat: CODE_ZIP
+              OutputArtifacts:
+                - Name: Fonte
+        - Name: Build
+          Actions:
+            - Name: TestesEPacote
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref BuildProject
+              InputArtifacts:
+                - Name: Fonte
+              OutputArtifacts:
+                - Name: Pacote
+        - Name: Deploy
+          Actions:
+            - Name: StackTc4Feedback
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: !Ref StackAplicacao
+                TemplatePath: Pacote::packaged.yaml
+                Capabilities: CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn: !GetAtt DeployRole.Arn
+              InputArtifacts:
+                - Name: Pacote
+
+Outputs:
+  ConnectionArn:
+    Description: Autorizar no console (Developer Tools > Settings > Connections > tc4-feedback-github > Update pending connection)
+    Value: !Ref GitHubConnection
+  PipelineUrl:
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/tc4-feedback/view?region=${AWS::Region}'

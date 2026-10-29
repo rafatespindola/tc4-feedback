@@ -7,9 +7,9 @@ Parameters:
     Type: String
     Default: prod
   AdminEmail:
-    Type: String
-    Description: E-mail que recebe os alertas criticos (fora do samconfig, pois o repositorio e publico)
-    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /tc4-feedback/admin-email
+    Description: Parametro do SSM com o e-mail dos administradores (fora do repositorio, que e publico)
 
 Globals:
   Function:

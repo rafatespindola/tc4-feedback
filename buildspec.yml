@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto21
+    commands:
+      - java -version
+      - mvn -v
+      - sam --version
+  build:
+    commands:
+      - mvn -B -ntp -Dmaven.repo.local=/root/.m2/repository verify
+      - >-
+        sam package --template-file template.yaml
+        --s3-bucket "$ARTIFACT_BUCKET" --s3-prefix sam
+        --output-template-file packaged.yaml
+
+reports:
+  junit:
+    files:
+      - '*/target/surefire-reports/TEST-*.xml'
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - packaged.yaml
+
+cache:
+  paths:
+    - '/root/.m2/**/*'

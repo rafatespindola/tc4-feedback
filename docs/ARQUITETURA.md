@@ -73,7 +73,7 @@ Respostas: `201` (criado), `400` (nota fora de 0–10 ou descrição vazia), `40
 - **Acesso humano**: root com MFA; uso diário via usuário/role administrativa.
 - **API**: API Key + usage plan (throttling) no API Gateway.
 - **Dados**: criptografia em repouso (DynamoDB, S3, SNS com KMS); S3 com bloqueio de acesso público. O tópico `alertas-criticos` usa chave KMS própria (`alias/tc4-alertas`) para aceitar publicações dos alarmes do CloudWatch.
-- **CI/CD**: GitHub Actions autentica via OIDC (sem chaves de acesso no repositório).
+- **CI/CD**: AWS CodePipeline acionado por push na `main` via CodeConnections (sem chaves de acesso); CloudFormation com role de deploy de permissão restrita. GitHub Actions roda os testes. (OIDC do GitHub não é possível: a SCP do projeto bloqueia `iam:*Provider*`.)
 - **Custo**: AWS Budgets com alerta.
 
 ## Monitoramento
@@ -89,7 +89,7 @@ Respostas: `201` (criado), `400` (nota fora de 0–10 ou descrição vazia), `40
 - Java 21 + Quarkus (`quarkus-amazon-lambda`, `quarkus-amazon-lambda-rest`)
 - Lambda em JVM com **SnapStart** (reduz cold start sem precisar de build nativo)
 - IaC: AWS SAM (`template.yaml` único)
-- CI/CD: GitHub Actions → `sam build && sam deploy`
+- CI/CD: CodePipeline → CodeBuild (`mvn verify` + `sam package`) → CloudFormation; GitHub Actions para testes
 
 ## Estrutura do repositório
 
@@ -101,7 +101,9 @@ tc4-feedback/
 ├── notifica-urgencia/           # λ DynamoDB Stream
 ├── gera-relatorio/              # λ agendada
 ├── template.yaml                # infra SAM (tabela, SNS, S3, API, scheduler, alarmes)
-├── .github/workflows/deploy.yml
+├── buildspec.yml                # CodeBuild
+├── cicd/pipeline.yaml           # CodePipeline + CodeBuild + roles (stack tc4-feedback-cicd)
+├── .github/workflows/ci.yml     # testes em push/PR
 ├── docs/
 │   └── ARQUITETURA.md
 └── README.md
