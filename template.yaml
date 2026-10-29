@@ -18,6 +18,7 @@ Globals:
     MemorySize: 1024
     Timeout: 15
     Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+    Tracing: Active
 
 Resources:
 
@@ -43,11 +44,44 @@ Resources:
         StreamViewType: NEW_IMAGE
 
   # ---------- Alertas ----------
+  # Chave própria: o CloudWatch (alarmes) não publica em tópico cifrado com a chave gerenciada aws/sns
+  AlertasKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: tc4-feedback - criptografia do topico alertas-criticos
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AdministracaoPelaConta
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: AlarmesDoCloudWatch
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:GenerateDataKey*
+              - kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  AlertasKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/tc4-alertas
+      TargetKeyId: !Ref AlertasKey
+
   AlertasCriticosTopic:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: alertas-criticos
-      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: !Ref AlertasKey
 
   AlertasCriticosEmail:
     Type: AWS::SNS::Subscription
@@ -115,6 +149,7 @@ Resources:
       StageName: !Ref Stage
       EndpointConfiguration:
         Type: REGIONAL
+      TracingEnabled: true
       Auth:
         ApiKeyRequired: true
         UsagePlan:
@@ -167,6 +202,12 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub '${RecebeAvaliacaoLogGroup.Arn}'
+              - Sid: Tracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: '*'          # X-Ray não suporta restrição por recurso
 
   RecebeAvaliacaoFunction:
     Type: AWS::Serverless::Function
@@ -228,12 +269,24 @@ Resources:
                 Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref AlertasCriticosTopic
+              - Sid: CifrarAlerta
+                Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                Resource: !GetAtt AlertasKey.Arn
               - Sid: EscreverLogs
                 Effect: Allow
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub '${NotificaUrgenciaLogGroup.Arn}'
+              - Sid: Tracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: '*'          # X-Ray não suporta restrição por recurso
 
   NotificaUrgenciaFunction:
     Type: AWS::Serverless::Function
@@ -308,6 +361,12 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub '${GeraRelatorioLogGroup.Arn}'
+              - Sid: Tracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: '*'          # X-Ray não suporta restrição por recurso
 
   GeraRelatorioFunction:
     Type: AWS::Serverless::Function
@@ -340,6 +399,137 @@ Resources:
               MaximumRetryAttempts: 2
               MaximumEventAgeInSeconds: 3600
 
+  # ---------- Monitoramento ----------
+  RecebeAvaliacaoErrosAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: tc4-recebe-avaliacao-erros
+      AlarmDescription: Erro na funcao que recebe avaliacoes (POST /avaliacao)
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RecebeAvaliacaoFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertasCriticosTopic
+
+  NotificaUrgenciaErrosAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: tc4-notifica-urgencia-erros
+      AlarmDescription: Erro na funcao que envia alertas de avaliacoes criticas
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref NotificaUrgenciaFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertasCriticosTopic
+
+  GeraRelatorioErrosAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: tc4-gera-relatorio-erros
+      AlarmDescription: Erro na funcao do relatorio semanal
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GeraRelatorioFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertasCriticosTopic
+
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: tc4-feedback
+      DashboardBody: !Sub |
+        {
+          "start": "-P7D",
+          "widgets": [
+            {"type": "text", "x": 0, "y": 0, "width": 24, "height": 1,
+             "properties": {"markdown": "## TC4 Feedback — avaliações, alertas e relatório semanal (${AWS::Region})"}},
+
+            {"type": "metric", "x": 0, "y": 1, "width": 12, "height": 6,
+             "properties": {"title": "Avaliações por urgência", "region": "${AWS::Region}", "view": "timeSeries",
+               "stacked": true, "stat": "Sum", "period": 3600,
+               "metrics": [
+                 ["TC4Feedback", "Avaliacoes", "Urgencia", "CRITICA", {"label": "CRÍTICA", "color": "#d62728"}],
+                 ["...", "MEDIA", {"label": "MÉDIA", "color": "#ff7f0e"}],
+                 ["...", "BAIXA", {"label": "BAIXA", "color": "#2ca02c"}]
+               ]}},
+            {"type": "metric", "x": 12, "y": 1, "width": 6, "height": 6,
+             "properties": {"title": "Total por urgência (período)", "region": "${AWS::Region}", "view": "pie",
+               "stat": "Sum", "period": 604800, "setPeriodToTimeRange": true,
+               "metrics": [
+                 ["TC4Feedback", "Avaliacoes", "Urgencia", "CRITICA", {"label": "CRÍTICA", "color": "#d62728"}],
+                 ["...", "MEDIA", {"label": "MÉDIA", "color": "#ff7f0e"}],
+                 ["...", "BAIXA", {"label": "BAIXA", "color": "#2ca02c"}]
+               ]}},
+            {"type": "metric", "x": 18, "y": 1, "width": 6, "height": 6,
+             "properties": {"title": "Média das notas (período)", "region": "${AWS::Region}", "view": "singleValue",
+               "stat": "Average", "period": 604800, "setPeriodToTimeRange": true,
+               "metrics": [["TC4Feedback", "Nota", {"label": "Nota média"}]]}},
+
+            {"type": "metric", "x": 0, "y": 7, "width": 8, "height": 6,
+             "properties": {"title": "Invocações", "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+               "metrics": [
+                 ["AWS/Lambda", "Invocations", "FunctionName", "${RecebeAvaliacaoFunction}", {"label": "recebe-avaliacao"}],
+                 ["...", "${NotificaUrgenciaFunction}", {"label": "notifica-urgencia"}],
+                 ["...", "${GeraRelatorioFunction}", {"label": "gera-relatorio"}]
+               ]}},
+            {"type": "metric", "x": 8, "y": 7, "width": 8, "height": 6,
+             "properties": {"title": "Erros", "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+               "metrics": [
+                 ["AWS/Lambda", "Errors", "FunctionName", "${RecebeAvaliacaoFunction}", {"label": "recebe-avaliacao"}],
+                 ["...", "${NotificaUrgenciaFunction}", {"label": "notifica-urgencia"}],
+                 ["...", "${GeraRelatorioFunction}", {"label": "gera-relatorio"}]
+               ]}},
+            {"type": "metric", "x": 16, "y": 7, "width": 8, "height": 6,
+             "properties": {"title": "Duração (p95, ms)", "region": "${AWS::Region}", "stat": "p95", "period": 300,
+               "metrics": [
+                 ["AWS/Lambda", "Duration", "FunctionName", "${RecebeAvaliacaoFunction}", {"label": "recebe-avaliacao"}],
+                 ["...", "${NotificaUrgenciaFunction}", {"label": "notifica-urgencia"}],
+                 ["...", "${GeraRelatorioFunction}", {"label": "gera-relatorio"}]
+               ]}},
+
+            {"type": "metric", "x": 0, "y": 13, "width": 12, "height": 6,
+             "properties": {"title": "API Gateway — requisições e erros", "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+               "metrics": [
+                 ["AWS/ApiGateway", "Count", "ApiName", "tc4-feedback-api", "Stage", "${Stage}", {"label": "Requisições"}],
+                 [".", "4XXError", ".", ".", ".", ".", {"label": "4XX (validação / sem API key)", "color": "#ff7f0e"}],
+                 [".", "5XXError", ".", ".", ".", ".", {"label": "5XX", "color": "#d62728"}]
+               ]}},
+            {"type": "metric", "x": 12, "y": 13, "width": 6, "height": 6,
+             "properties": {"title": "API Gateway — latência (ms)", "region": "${AWS::Region}", "period": 300,
+               "metrics": [
+                 ["AWS/ApiGateway", "Latency", "ApiName", "tc4-feedback-api", "Stage", "${Stage}", {"stat": "p50", "label": "p50"}],
+                 ["...", {"stat": "p95", "label": "p95"}]
+               ]}},
+            {"type": "alarm", "x": 18, "y": 13, "width": 6, "height": 6,
+             "properties": {"title": "Alarmes",
+               "alarms": ["${RecebeAvaliacaoErrosAlarm.Arn}", "${NotificaUrgenciaErrosAlarm.Arn}", "${GeraRelatorioErrosAlarm.Arn}"]}}
+          ]
+        }
+
 Outputs:
   ApiUrl:
     Description: Endpoint POST /avaliacao
@@ -357,3 +547,5 @@ Outputs:
     Value: !Ref RelatorioSemanalTopic
   BucketRelatorios:
     Value: !Ref RelatoriosBucket
+  DashboardUrl:
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards/dashboard/tc4-feedback'

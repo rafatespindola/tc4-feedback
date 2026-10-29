@@ -23,10 +23,12 @@ public class AvaliacaoResource {
     private static final Logger LOG = Logger.getLogger(AvaliacaoResource.class);
 
     private final AvaliacaoRepository repository;
+    private final MetricasAvaliacao metricas;
     private final Clock clock;
 
-    public AvaliacaoResource(AvaliacaoRepository repository, Clock clock) {
+    public AvaliacaoResource(AvaliacaoRepository repository, MetricasAvaliacao metricas, Clock clock) {
         this.repository = repository;
+        this.metricas = metricas;
         this.clock = clock;
     }
 
@@ -34,6 +36,7 @@ public class AvaliacaoResource {
     public Response receber(@Valid @NotNull(message = "corpo da requisição é obrigatório") AvaliacaoRequest request) {
         Avaliacao avaliacao = Avaliacao.nova(request.descricao(), request.nota(), clock);
         repository.salvar(avaliacao);
+        metricas.registrar(avaliacao);
         LOG.infof("avaliacao recebida id=%s nota=%d urgencia=%s", avaliacao.id(), avaliacao.nota(), avaliacao.urgencia());
         return Response.status(Response.Status.CREATED).entity(AvaliacaoResponse.de(avaliacao)).build();
     }

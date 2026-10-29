@@ -75,6 +75,21 @@ aws lambda invoke --function-name tc4-gera-relatorio:live --profile tc4 --region
 
 `inicio` precisa ser uma segunda-feira. Sem `inicio` (`{}`), usa a semana anterior.
 
+## Monitoramento
+
+- **Painel** CloudWatch `tc4-feedback` (link no output `DashboardUrl` da stack): avaliações por urgência,
+  média das notas, invocações, erros e duração das 3 funções, requisições/erros/latência da API e estado dos alarmes.
+- **Alarmes** `tc4-<função>-erros`: qualquer erro em uma função (`Errors > 0` em 5 min) envia e-mail pelo
+  tópico `alertas-criticos`.
+- **Métricas de negócio** (namespace `TC4Feedback`): `Avaliacoes` e `Nota` por `Urgencia`, publicadas pelo
+  `recebe-avaliacao` em Embedded Metric Format (sem chamada de API).
+- **Logs** em JSON, com retenção de 14 dias (`/aws/lambda/tc4-*`). Exemplo no Logs Insights:
+  `fields @timestamp, level, message | filter servico = "recebe-avaliacao" | sort @timestamp desc`
+- **X-Ray** ativo na API e nas 3 funções.
+
+O tópico `alertas-criticos` usa uma chave KMS própria (`alias/tc4-alertas`, ~US$ 1/mês), exigida para que os
+alarmes do CloudWatch consigam publicar num tópico criptografado.
+
 ## Regra de urgência
 
 | Nota | Urgência |

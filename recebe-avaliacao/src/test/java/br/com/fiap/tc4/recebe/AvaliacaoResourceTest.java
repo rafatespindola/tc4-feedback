@@ -26,6 +26,9 @@ class AvaliacaoResourceTest {
     @InjectMock
     AvaliacaoRepository repository;
 
+    @InjectMock
+    MetricasAvaliacao metricas;
+
     @Test
     void notaBaixaEhCritica() {
         given().contentType(ContentType.JSON)
@@ -41,6 +44,7 @@ class AvaliacaoResourceTest {
         verify(repository).salvar(captor.capture());
         assertThat(captor.getValue().descricao()).isEqualTo("Áudio da aula cortando");
         assertThat(captor.getValue().urgencia()).isEqualTo(Urgencia.CRITICA);
+        verify(metricas).registrar(captor.getValue());
     }
 
     @Test
@@ -72,6 +76,7 @@ class AvaliacaoResourceTest {
                 .then().statusCode(400);
 
         verify(repository, never()).salvar(any());
+        verify(metricas, never()).registrar(any());
     }
 
     @Test

@@ -72,13 +72,14 @@ Respostas: `201` (criado), `400` (nota fora de 0–10 ou descrição vazia), `40
 - **IAM**: uma role por função, permissão mínima (ex.: `recebe-avaliacao` só faz `PutItem` na tabela).
 - **Acesso humano**: root com MFA; uso diário via usuário/role administrativa.
 - **API**: API Key + usage plan (throttling) no API Gateway.
-- **Dados**: criptografia em repouso (DynamoDB, S3, SNS com KMS); S3 com bloqueio de acesso público.
+- **Dados**: criptografia em repouso (DynamoDB, S3, SNS com KMS); S3 com bloqueio de acesso público. O tópico `alertas-criticos` usa chave KMS própria (`alias/tc4-alertas`) para aceitar publicações dos alarmes do CloudWatch.
 - **CI/CD**: GitHub Actions autentica via OIDC (sem chaves de acesso no repositório).
 - **Custo**: AWS Budgets com alerta.
 
 ## Monitoramento
 
 - CloudWatch Logs (retenção 14 dias) e logs estruturados em JSON.
+- Métricas de negócio via Embedded Metric Format (namespace `TC4Feedback`: `Avaliacoes` e `Nota` por `Urgencia`).
 - X-Ray tracing nas 3 funções.
 - Alarme: `Errors > 0` em qualquer função → SNS `alertas-criticos`.
 - Dashboard CloudWatch: invocações, erros, duração, avaliações por urgência.
