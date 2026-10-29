@@ -67,10 +67,22 @@ Content-Type: application/json
 
 Respostas: `201` (criado), `400` (nota fora de 0–10 ou descrição vazia), `403` (sem API key).
 
+## Perfis de acesso
+
+| Perfil | Pode | Canal | Controle de acesso |
+|---|---|---|---|
+| **Estudante** | Avaliar aulas (descrição + nota 0–10) | `POST /avaliacao` no API Gateway | API Key + usage plan `tc4-feedback-estudantes` (throttling); só tem acesso a esse endpoint, não lê dados |
+| **Administrador** | Receber alertas de avaliações críticas | E-mail via SNS `alertas-criticos` (imediato, nota 0–3) | Inscrição no tópico (e-mail em `/tc4-feedback/admin-email`) |
+| | Receber o relatório semanal | E-mail via SNS `relatorio-semanal` (segunda 08:00 BRT) | Inscrição no tópico |
+| | Consultar o histórico de relatórios | S3 `relatorios/AAAA/semana-AAAA-MM-DD.json` (média, qtd por dia, qtd por urgência, lista de avaliações) | Team member do projeto (console AWS); bucket privado |
+| | Acompanhar análises e a saúde do sistema | Dashboard CloudWatch `tc4-feedback` (avaliações por urgência, invocações, erros, duração) | Team member do projeto (console AWS) |
+
+A separação é estrutural: o estudante só alcança a API de escrita; leitura de avaliações, relatórios e métricas fica restrita a quem tem acesso ao projeto AWS ou está inscrito nos tópicos SNS.
+
 ## Segurança e governança
 
 - **IAM**: uma role por função, permissão mínima (ex.: `recebe-avaliacao` só faz `PutItem` na tabela).
-- **Acesso humano**: root com MFA; uso diário via usuário/role administrativa.
+- **Acesso humano**: administradores são convidados por e-mail como *team members* em AWS Settings (sem usuários IAM); as permissões de acesso humano são gerenciadas pela AWS.
 - **API**: API Key + usage plan (throttling) no API Gateway.
 - **Dados**: criptografia em repouso (DynamoDB, S3, SNS com KMS); S3 com bloqueio de acesso público. O tópico `alertas-criticos` usa chave KMS própria (`alias/tc4-alertas`) para aceitar publicações dos alarmes do CloudWatch.
 - **CI/CD**: AWS CodePipeline acionado por push na `main` via CodeConnections (sem chaves de acesso); CloudFormation com role de deploy de permissão restrita. GitHub Actions roda os testes. (OIDC do GitHub não é possível: a SCP do projeto bloqueia `iam:*Provider*`.)

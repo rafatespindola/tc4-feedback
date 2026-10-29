@@ -2,6 +2,8 @@
 
 Plataforma serverless (AWS, `us-east-2`) para receber avaliações de aulas, alertar sobre itens críticos e gerar relatório semanal. Arquitetura completa em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
+**Perfis:** o **estudante** avalia aulas pela API (`POST /avaliacao` com API Key); o **administrador** recebe alertas críticos e o relatório semanal por e-mail e consulta o histórico no S3 e o dashboard CloudWatch. Detalhes em [Perfis de acesso](docs/ARQUITETURA.md#perfis-de-acesso).
+
 ## Status
 
 | Módulo | Situação |
