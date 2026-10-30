@@ -117,6 +117,8 @@ tc4-feedback/
 ├── cicd/pipeline.yaml           # CodePipeline + CodeBuild + roles (stack tc4-feedback-cicd)
 ├── .github/workflows/ci.yml     # testes em push/PR
 ├── docs/
-│   └── ARQUITETURA.md
+│   ├── ARQUITETURA.md
+│   ├── RelatorioTecnicoTC4Fase4.html / .pdf   # relatório técnico da entrega
+│   └── GITHUB_VIDEO_ALUNOS.txt                # alunos, RMs e links
 └── README.md
 ```

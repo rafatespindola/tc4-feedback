@@ -1,0 +1,24 @@
+Link do vídeo de apresentação:
+   [a definir]
+
+Github:
+  https://github.com/rafatespindola/tc4-feedback
+
+Relatório técnico:
+  docs/RelatorioTecnicoTC4Fase4.pdf
+
+Alunos:
+  Aluno: Geovanne de Souza Paes
+  RM: 372009
+
+  Aluno: Rafael Teles Espindola
+  RM: 370772
+
+  Aluno: Victor Silva Mazzola
+  RM: 370764
+
+  Aluno: Gideão Lucas de Souza Silva
+  RM: 374230
+
+  Aluno: Luis Filipi Santos Souza
+  RM: 372233

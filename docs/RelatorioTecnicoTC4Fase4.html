@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TC4 Feedback — Relatório Técnico: Fase 4</title>
+<style>
+  :root {
+    --navy: #0e1a2b;
+    --navy-soft: #1c2a3d;
+    --red: #e5344a;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --paper: #ffffff;
+    --stripe: #f6f7f9;
+    --code-bg: #1c2739;
+    --code-ink: #e6edf7;
+    --chip-bg: #eceef8;
+    --chip-ink: #3b4a6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #ffffff;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 48px 56px;
+  }
+
+  /* ---------- Capa ---------- */
+  .cover {
+    background: var(--navy);
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 40px;
+  }
+  .cover .badge {
+    background: var(--red);
+    color: #ffffff;
+    font-size: 12px;
+    letter-spacing: 3px;
+    padding: 8px 22px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .cover h1 {
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.2;
+    max-width: 560px;
+  }
+  .cover .subtitle {
+    color: #9fb0c7;
+    font-size: 19px;
+    margin-top: 18px;
+  }
+  .cover .institution {
+    color: #6e8098;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    text-transform: uppercase;
+  }
+  .cover .divider {
+    width: 56px;
+    height: 4px;
+    background: var(--red);
+    border-radius: 2px;
+    margin: 42px 0;
+  }
+  .cover .students {
+    background: var(--navy-soft);
+    border-radius: 14px;
+    padding: 30px 44px;
+    text-align: left;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  }
+  .cover .students p { margin: 4px 0; color: #c7d2e2; font-size: 15px; }
+  .cover .students b { color: #ffffff; }
+  .cover .video {
+    background: var(--navy-soft);
+    border: 1px solid var(--red);
+    border-radius: 14px;
+    padding: 18px 44px;
+    margin-top: 24px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  }
+  .cover .video p { margin: 4px 0; color: #c7d2e2; font-size: 15px; }
+  .cover .video b { color: #ffffff; }
+  .cover .video a { color: #ff6b6b; font-size: 15px; word-break: break-all; }
+
+  /* ---------- Sumário ---------- */
+  h2.summary-title, h2.section-title {
+    font-size: 28px;
+    color: var(--navy);
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--red);
+    margin: 48px 0 24px 0;
+  }
+  ol.summary { margin-left: 28px; }
+  ol.summary li { padding: 5px 0; color: var(--ink); font-size: 16px; }
+
+  /* ---------- Blocos de seção ---------- */
+  h3.block {
+    font-size: 18px;
+    color: var(--navy);
+    border-left: 4px solid var(--red);
+    padding-left: 12px;
+    margin: 30px 0 12px 0;
+  }
+  h4 { font-size: 15px; color: var(--navy); margin: 22px 0 8px 0; }
+
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 28px; }
+  li { padding: 3px 0; }
+
+  code {
+    background: var(--chip-bg);
+    color: var(--chip-ink);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+  }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 12px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; font-size: 13px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  thead th {
+    background: var(--navy);
+    color: #ffffff;
+    text-align: left;
+    padding: 12px 14px;
+    font-weight: 600;
+  }
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #e9ecf0;
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: var(--stripe); }
+
+  .method {
+    display: inline-block;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+  .m-post   { background: #1565c0; }
+
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 18px 0;
+    font-size: 14px;
+  }
+  .callout.info    { background: #fff8e1; border-left: 4px solid #f6b93b; }
+  .callout.success { background: #e8f5e9; border-left: 4px solid #43a047; }
+
+  .pending {
+    border: 2px dashed #c3cad4;
+    border-radius: 12px;
+    background: #fafbfc;
+    color: var(--muted);
+    padding: 28px 24px;
+    text-align: center;
+    font-size: 14px;
+    margin: 18px 0;
+  }
+  .pending b { color: #8a94a3; letter-spacing: 1px; }
+
+  .endpoint-card {
+    border: 1px solid #e5e8ec;
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin: 22px 0;
+  }
+  .endpoint-card .title {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 15px;
+    margin-left: 10px;
+  }
+  .endpoint-card h5 { font-size: 14px; color: var(--ink); margin: 18px 0 6px 0; }
+
+  /* ---------- Diagrama ---------- */
+  .diagram { margin: 20px 0; text-align: center; }
+  .diagram svg { width: 100%; height: auto; max-width: 760px; }
+  .diagram .caption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+  /* ---------- Decisões ---------- */
+  .adr {
+    border: 1px solid #e5e8ec;
+    border-radius: 12px;
+    padding: 16px 22px;
+    margin: 16px 0;
+  }
+  .adr h4 { margin: 0 0 6px 0; }
+  .adr p { margin: 6px 0; font-size: 14px; }
+  .adr .why { color: var(--ink); }
+  .adr .alt { color: var(--muted); }
+
+  /* ---------- Impressão ---------- */
+  @media print {
+    body { font-size: 12px; }
+    .page { max-width: 100%; padding: 24px 10mm; }
+    .cover { min-height: 96vh; page-break-after: always; padding: 40px; }
+    .cover .divider { margin: 28px 0; }
+    .summary-page { page-break-after: always; }
+    h2.section-title { page-break-after: avoid; margin-top: 30px; }
+    h3.block, h4 { page-break-after: avoid; }
+    pre, table, .endpoint-card, .callout, .pending, .adr, .diagram { page-break-inside: avoid; }
+    pre { font-size: 10.5px; overflow-x: hidden; }
+    pre code { font-size: 10.5px; }
+    section.topic { page-break-before: always; }
+    section.topic:first-of-type { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="badge">Projeto: TC4 Feedback</div>
+  <h1>Plataforma Serverless de Feedback de Aulas</h1>
+  <div class="subtitle">Relatório Técnico: Fase 4</div>
+  <div class="institution">FIAP — Pós Tech · Arquitetura e Desenvolvimento Java</div>
+  <div class="divider"></div>
+  <div class="students">
+    <p><b>Geovanne de Souza Paes</b> — RM 372009</p>
+    <p><b>Rafael Teles Espindola</b> — RM 370772</p>
+    <p><b>Victor Silva Mazzola</b> — RM 370764</p>
+    <p><b>Gideão Lucas de Souza Silva</b> — RM 374230</p>
+    <p><b>Luis Filipi Santos Souza</b> — RM 372233</p>
+  </div>
+  <div class="video">
+    <p><b>🎥 Vídeo de apresentação do projeto:</b></p>
+    <p>[link do vídeo — a definir]</p>
+    <p><b>Repositório:</b></p>
+    <a href="https://github.com/rafatespindola/tc4-feedback">https://github.com/rafatespindola/tc4-feedback</a>
+  </div>
+</div>
+
+<div class="page summary-page">
+  <h2 class="summary-title">Sumário</h2>
+  <ol class="summary">
+    <li>Introdução</li>
+    <li>Arquitetura da solução</li>
+    <li>Funções e responsabilidades</li>
+    <li>Modelo de dados</li>
+    <li>API: contrato e respostas</li>
+    <li>Perfis de acesso</li>
+    <li>Segurança e governança</li>
+    <li>Monitoramento</li>
+    <li>Decisões técnicas</li>
+    <li>Testes automatizados</li>
+    <li>CI/CD</li>
+    <li>Como rodar o projeto</li>
+    <li>Estrutura do repositório</li>
+    <li>Observações e limitações conhecidas</li>
+  </ol>
+</div>
+
+<div class="page">
+
+<section class="topic">
+  <h2 class="section-title">1. Introdução</h2>
+
+  <h3 class="block">Descrição do problema</h3>
+  <p>
+    Uma instituição de ensino quer ouvir os estudantes sobre a qualidade das aulas e reagir rápido
+    quando algo dá errado. Os estudantes enviam avaliações (uma descrição e uma nota de 0 a 10);
+    avaliações muito negativas precisam chegar imediatamente aos administradores, e todo o conjunto
+    precisa ser consolidado em um relatório periódico.
+  </p>
+
+  <h3 class="block">Objetivo da solução</h3>
+  <ul>
+    <li><b>Receber avaliações</b> de aulas por uma API HTTP.</li>
+    <li><b>Classificar a urgência</b> de cada avaliação pela nota e <b>alertar os administradores por e-mail</b> quando ela for crítica.</li>
+    <li><b>Gerar um relatório semanal</b> com média das notas, quantidade de avaliações por dia e por urgência, e a lista de avaliações; enviá-lo por e-mail e guardá-lo no S3.</li>
+    <li>Tudo em <b>arquitetura serverless na AWS</b>, com funções de responsabilidade única, infraestrutura como código, monitoramento e deploy automatizado.</li>
+  </ul>
+
+  <h3 class="block">Visão geral da stack</h3>
+  <table>
+    <thead><tr><th>Camada</th><th>Tecnologia</th></tr></thead>
+    <tbody>
+      <tr><td>Linguagem e framework</td><td>Java 21 + Quarkus 3.39 (<code>quarkus-amazon-lambda</code>, <code>quarkus-amazon-lambda-rest</code>)</td></tr>
+      <tr><td>Computação</td><td>AWS Lambda (Java 21, arm64/Graviton, SnapStart)</td></tr>
+      <tr><td>Entrada HTTP</td><td>Amazon API Gateway (REST) com API Key e usage plan</td></tr>
+      <tr><td>Dados</td><td>Amazon DynamoDB (on-demand) + DynamoDB Streams</td></tr>
+      <tr><td>Notificação</td><td>Amazon SNS (e-mail)</td></tr>
+      <tr><td>Agendamento</td><td>Amazon EventBridge Scheduler</td></tr>
+      <tr><td>Armazenamento de relatórios</td><td>Amazon S3</td></tr>
+      <tr><td>Observabilidade</td><td>CloudWatch Logs, métricas (EMF), alarmes, dashboard e AWS X-Ray</td></tr>
+      <tr><td>Infraestrutura como código</td><td>AWS SAM (<code>template.yaml</code>) e CloudFormation (<code>cicd/pipeline.yaml</code>)</td></tr>
+      <tr><td>CI/CD</td><td>AWS CodePipeline + CodeBuild + CodeConnections; GitHub Actions para testes</td></tr>
+      <tr><td>Região</td><td><code>us-east-2</code> (Ohio)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">2. Arquitetura da solução</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" role="img" aria-label="Diagrama da arquitetura">
+      <defs>
+        <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#0e1a2b"/>
+        </marker>
+        <marker id="seta-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#e5344a"/>
+        </marker>
+      </defs>
+
+      <!-- Linha 1: recebimento -->
+      <g font-size="12" text-anchor="middle">
+        <rect x="10" y="20" width="150" height="58" rx="10" fill="#eceef8" stroke="#3b4a6b"/>
+        <text x="85" y="45" font-weight="700" fill="#0e1a2b">Estudante</text>
+        <text x="85" y="63" fill="#3b4a6b" font-size="10.5">POST /avaliacao</text>
+
+        <rect x="200" y="20" width="150" height="58" rx="10" fill="#ffffff" stroke="#0e1a2b"/>
+        <text x="275" y="45" font-weight="700" fill="#0e1a2b">API Gateway</text>
+        <text x="275" y="63" fill="#3b4a6b" font-size="10.5">API Key + throttling</text>
+
+        <rect x="390" y="20" width="150" height="58" rx="10" fill="#0e1a2b"/>
+        <text x="465" y="45" font-weight="700" fill="#ffffff">λ recebe-avaliacao</text>
+        <text x="465" y="63" fill="#9fb0c7" font-size="10.5">valida e classifica</text>
+
+        <rect x="580" y="20" width="170" height="58" rx="10" fill="#ffffff" stroke="#0e1a2b"/>
+        <text x="665" y="45" font-weight="700" fill="#0e1a2b">DynamoDB</text>
+        <text x="665" y="63" fill="#3b4a6b" font-size="10.5">tabela Avaliacoes</text>
+      </g>
+      <line x1="160" y1="49" x2="198" y2="49" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+      <line x1="350" y1="49" x2="388" y2="49" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+      <line x1="540" y1="49" x2="578" y2="49" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+
+      <!-- Linha 2: alerta crítico -->
+      <line x1="665" y1="78" x2="665" y2="138" stroke="#e5344a" stroke-width="1.6" marker-end="url(#seta-red)"/>
+      <text x="673" y="106" font-size="10.5" fill="#e5344a">Stream filtrado</text>
+      <text x="673" y="120" font-size="10.5" fill="#e5344a">(só CRITICA)</text>
+      <g font-size="12" text-anchor="middle">
+        <rect x="580" y="140" width="170" height="58" rx="10" fill="#0e1a2b"/>
+        <text x="665" y="165" font-weight="700" fill="#ffffff">λ notifica-urgencia</text>
+        <text x="665" y="183" fill="#9fb0c7" font-size="10.5">monta o alerta</text>
+
+        <rect x="390" y="140" width="150" height="58" rx="10" fill="#fdecee" stroke="#e5344a"/>
+        <text x="465" y="165" font-weight="700" fill="#0e1a2b">SNS</text>
+        <text x="465" y="183" fill="#3b4a6b" font-size="10.5">alertas-criticos</text>
+
+        <rect x="10" y="140" width="150" height="168" rx="10" fill="#eceef8" stroke="#3b4a6b"/>
+        <text x="85" y="218" font-weight="700" fill="#0e1a2b">Administradores</text>
+        <text x="85" y="236" fill="#3b4a6b" font-size="10.5">e-mail</text>
+      </g>
+      <line x1="580" y1="169" x2="542" y2="169" stroke="#e5344a" stroke-width="1.6" marker-end="url(#seta-red)"/>
+      <line x1="390" y1="169" x2="162" y2="169" stroke="#e5344a" stroke-width="1.6" marker-end="url(#seta-red)"/>
+      <text x="275" y="161" font-size="10.5" text-anchor="middle" fill="#e5344a">alerta imediato</text>
+
+      <!-- Linha 3: relatório semanal -->
+      <g font-size="12" text-anchor="middle">
+        <rect x="580" y="250" width="170" height="58" rx="10" fill="#ffffff" stroke="#0e1a2b"/>
+        <text x="665" y="275" font-weight="700" fill="#0e1a2b">EventBridge Scheduler</text>
+        <text x="665" y="293" fill="#3b4a6b" font-size="10.5">seg 08:00 (Brasília)</text>
+
+        <rect x="390" y="250" width="150" height="58" rx="10" fill="#0e1a2b"/>
+        <text x="465" y="275" font-weight="700" fill="#ffffff">λ gera-relatorio</text>
+        <text x="465" y="293" fill="#9fb0c7" font-size="10.5">Query 7 dias na tabela</text>
+
+        <rect x="200" y="250" width="150" height="58" rx="10" fill="#ffffff" stroke="#0e1a2b"/>
+        <text x="275" y="275" font-weight="700" fill="#0e1a2b">SNS</text>
+        <text x="275" y="293" fill="#3b4a6b" font-size="10.5">relatorio-semanal</text>
+
+        <rect x="390" y="350" width="150" height="58" rx="10" fill="#ffffff" stroke="#0e1a2b"/>
+        <text x="465" y="375" font-weight="700" fill="#0e1a2b">S3</text>
+        <text x="465" y="393" fill="#3b4a6b" font-size="10.5">relatorios/*.json</text>
+      </g>
+      <line x1="580" y1="279" x2="542" y2="279" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+      <line x1="390" y1="279" x2="352" y2="279" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+      <line x1="200" y1="279" x2="162" y2="279" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+      <line x1="465" y1="308" x2="465" y2="348" stroke="#0e1a2b" stroke-width="1.6" marker-end="url(#seta)"/>
+
+      <!-- Observabilidade -->
+      <rect x="580" y="350" width="170" height="58" rx="10" fill="#f6f7f9" stroke="#9aa3b2" stroke-dasharray="4 3"/>
+      <text x="665" y="375" font-size="12" font-weight="700" text-anchor="middle" fill="#0e1a2b">CloudWatch + X-Ray</text>
+      <text x="665" y="393" font-size="10.5" text-anchor="middle" fill="#3b4a6b">logs, métricas, alarmes</text>
+    </svg>
+    <div class="caption">Figura 1 — Fluxos de recebimento, alerta crítico e relatório semanal. Os alarmes de erro do CloudWatch também publicam em <code>alertas-criticos</code>.</div>
+  </div>
+
+  <h3 class="block">Fluxos</h3>
+  <ol>
+    <li><b>Recebimento:</b> o estudante chama <code>POST /avaliacao</code> com a API Key. O API Gateway aplica throttling e encaminha para a função <code>recebe-avaliacao</code>, que valida a entrada, classifica a urgência e grava a avaliação no DynamoDB.</li>
+    <li><b>Alerta crítico:</b> cada inserção gera um evento no DynamoDB Stream. Um <b>filtro de eventos</b> na integração só deixa passar inserções com <code>urgencia = CRITICA</code>; a função <code>notifica-urgencia</code> monta o alerta (descrição, urgência e data de envio) e publica no tópico SNS <code>alertas-criticos</code>, que envia o e-mail aos administradores.</li>
+    <li><b>Relatório semanal:</b> toda segunda-feira às 08:00 (horário de Brasília) o EventBridge Scheduler aciona <code>gera-relatorio</code>, que consulta os 7 dias da semana anterior, calcula as estatísticas, salva o JSON no S3 e publica o resumo no tópico <code>relatorio-semanal</code>.</li>
+  </ol>
+  <p>
+    A função de recebimento <b>não sabe</b> que existe notificação: o desacoplamento é feito pelo Stream.
+    Se o envio de alertas falhar, o recebimento de avaliações continua funcionando.
+  </p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">3. Funções e responsabilidades</h2>
+  <p>Cada função tem uma única responsabilidade, um gatilho próprio e uma role IAM própria com permissão mínima.</p>
+  <table>
+    <thead><tr><th>Função</th><th>Gatilho</th><th>Responsabilidade</th><th>Permissões IAM</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>tc4-recebe-avaliacao</code></td>
+        <td>API Gateway <code>POST /avaliacao</code></td>
+        <td>Validar a entrada, classificar a urgência, gravar a avaliação e emitir métricas de negócio</td>
+        <td><code>dynamodb:PutItem</code> na tabela</td>
+      </tr>
+      <tr>
+        <td><code>tc4-notifica-urgencia</code></td>
+        <td>DynamoDB Stream (filtro <code>INSERT</code> + <code>CRITICA</code>)</td>
+        <td>Montar e enviar o alerta com descrição, urgência e data de envio</td>
+        <td>Leitura do Stream; <code>sns:Publish</code> no tópico de alertas; uso da chave KMS do tópico</td>
+      </tr>
+      <tr>
+        <td><code>tc4-gera-relatorio</code></td>
+        <td>EventBridge Scheduler <code>cron(0 8 ? * MON *)</code>, fuso <code>America/Sao_Paulo</code></td>
+        <td>Agregar a semana: média, quantidade por dia, por urgência e lista de avaliações; salvar no S3 e enviar por e-mail</td>
+        <td><code>dynamodb:Query</code>; <code>s3:PutObject</code> em <code>relatorios/*</code>; <code>sns:Publish</code> no tópico do relatório</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 class="block">Regra de urgência</h3>
+  <p>A regra fica no módulo <code>core</code> (<code>Urgencia.classificar</code>) e é compartilhada pelas três funções.</p>
+  <table>
+    <thead><tr><th>Nota</th><th>Urgência</th><th>Efeito</th></tr></thead>
+    <tbody>
+      <tr><td>0 – 3</td><td><b>CRITICA</b></td><td>Dispara alerta imediato por e-mail</td></tr>
+      <tr><td>4 – 6</td><td>MEDIA</td><td>Entra no relatório semanal</td></tr>
+      <tr><td>7 – 10</td><td>BAIXA</td><td>Entra no relatório semanal</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="block">Conteúdo do relatório semanal</h3>
+  <ul>
+    <li>Período (segunda a domingo, horário de Brasília) e data de geração.</li>
+    <li>Total de avaliações e <b>média das notas</b> (2 casas decimais).</li>
+    <li><b>Quantidade de avaliações por dia</b> — todos os 7 dias aparecem, mesmo com zero.</li>
+    <li><b>Quantidade por urgência</b> — CRITICA, MEDIA e BAIXA, mesmo com zero.</li>
+    <li>Lista completa das avaliações, em ordem de envio.</li>
+  </ul>
+  <p>
+    O JSON completo é salvo em <code>s3://&lt;bucket&gt;/relatorios/AAAA/semana-AAAA-MM-DD.json</code>. O e-mail traz
+    o resumo e até 100 avaliações (limite de tamanho do SNS), com o caminho do arquivo completo.
+  </p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">4. Modelo de dados</h2>
+  <p>Tabela DynamoDB <code>Avaliacoes</code>, cobrança sob demanda (<code>PAY_PER_REQUEST</code>), criptografada com KMS e com Stream <code>NEW_IMAGE</code>.</p>
+  <table>
+    <thead><tr><th>Atributo</th><th>Tipo</th><th>Exemplo</th></tr></thead>
+    <tbody>
+      <tr><td><code>dia</code> (partition key)</td><td>String — dia do envio no horário de Brasília</td><td><code>2026-10-27</code></td></tr>
+      <tr><td><code>criadoEm#id</code> (sort key)</td><td>String</td><td><code>2026-10-27T14:03:11Z#9f1c…</code></td></tr>
+      <tr><td><code>id</code></td><td>String (UUID)</td><td><code>24ca9a9a-c9d5-…</code></td></tr>
+      <tr><td><code>descricao</code></td><td>String (até 2000 caracteres)</td><td>Áudio da aula cortando</td></tr>
+      <tr><td><code>nota</code></td><td>Number (0–10)</td><td><code>2</code></td></tr>
+      <tr><td><code>urgencia</code></td><td>String</td><td><code>CRITICA</code></td></tr>
+      <tr><td><code>dataEnvio</code></td><td>String (ISO-8601, UTC)</td><td><code>2026-10-29T23:09:01Z</code></td></tr>
+    </tbody>
+  </table>
+  <p>
+    A chave de partição por dia faz o relatório semanal ser <b>7 <code>Query</code></b> (uma por dia), sem
+    <code>Scan</code> na tabela. A sort key <code>criadoEm#id</code> mantém as avaliações ordenadas por
+    horário dentro do dia e é única mesmo com envios no mesmo segundo.
+  </p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">5. API: contrato e respostas</h2>
+
+  <div class="endpoint-card">
+    <span class="method m-post">POST</span><span class="title">/avaliacao</span>
+    <p>Registra a avaliação de uma aula.</p>
+    <h5>Requisição</h5>
+<pre><code>POST https://&lt;api-id&gt;.execute-api.us-east-2.amazonaws.com/prod/avaliacao
+x-api-key: &lt;chave&gt;
+Content-Type: application/json
+
+{ "descricao": "Áudio da aula cortando", "nota": 2 }</code></pre>
+    <h5>Resposta 201 — criado</h5>
+<pre><code>{
+  "id": "24ca9a9a-c9d5-4e5f-bba0-efc06d3e43b6",
+  "descricao": "Áudio da aula cortando",
+  "nota": 2,
+  "urgencia": "CRITICA",
+  "dataEnvio": "2026-10-29T23:09:01Z"
+}</code></pre>
+    <h5>Validações</h5>
+    <ul>
+      <li><code>descricao</code>: obrigatória, não vazia, até 2000 caracteres.</li>
+      <li><code>nota</code>: obrigatória, inteiro de 0 a 10.</li>
+    </ul>
+  </div>
+
+  <table>
+    <thead><tr><th>Status</th><th>Quando</th><th>Exemplo de corpo</th></tr></thead>
+    <tbody>
+      <tr><td><code>201</code></td><td>Avaliação gravada</td><td>Avaliação com <code>id</code>, <code>urgencia</code> e <code>dataEnvio</code></td></tr>
+      <tr><td><code>400</code></td><td>Nota fora de 0–10, descrição vazia/longa ou corpo ausente</td><td><code>{"title":"Constraint Violation","status":400,"violations":[{"field":"receber.request.nota","message":"nota deve estar entre 0 e 10"}]}</code></td></tr>
+      <tr><td><code>403</code></td><td>Sem API Key ou chave inválida</td><td><code>{"message":"Forbidden"}</code></td></tr>
+      <tr><td><code>429</code></td><td>Acima do limite do usage plan</td><td>Resposta do API Gateway</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>Limites do usage plan <code>tc4-feedback-estudantes</code>:</b> 10 requisições/s, rajada de 20 e cota de 10.000 requisições por dia.</p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">6. Perfis de acesso</h2>
+  <table>
+    <thead><tr><th>Perfil</th><th>Pode</th><th>Canal</th><th>Controle de acesso</th></tr></thead>
+    <tbody>
+      <tr><td><b>Estudante</b></td><td>Avaliar aulas (descrição + nota 0–10)</td><td><code>POST /avaliacao</code> no API Gateway</td><td>API Key + usage plan (throttling). Só tem acesso a esse endpoint; não lê dados</td></tr>
+      <tr><td rowspan="4"><b>Administrador</b></td><td>Receber alertas de avaliações críticas</td><td>E-mail via SNS <code>alertas-criticos</code> (imediato, nota 0–3)</td><td>Inscrição no tópico (e-mail no Parameter Store)</td></tr>
+      <tr><td>Receber o relatório semanal</td><td>E-mail via SNS <code>relatorio-semanal</code> (segunda 08:00)</td><td>Inscrição no tópico</td></tr>
+      <tr><td>Consultar o histórico de relatórios</td><td>S3 <code>relatorios/AAAA/semana-*.json</code></td><td>Membro do projeto AWS; bucket privado</td></tr>
+      <tr><td>Acompanhar análises e a saúde do sistema</td><td>Dashboard CloudWatch <code>tc4-feedback</code></td><td>Membro do projeto AWS</td></tr>
+    </tbody>
+  </table>
+  <p>
+    A separação é estrutural: o estudante só alcança a API de escrita. Leitura de avaliações, relatórios e
+    métricas fica restrita a quem tem acesso ao projeto AWS ou está inscrito nos tópicos SNS.
+  </p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">7. Segurança e governança</h2>
+  <ul>
+    <li><b>IAM com permissão mínima:</b> uma role por função, cada uma restrita às ações e recursos que usa (ex.: <code>recebe-avaliacao</code> só faz <code>PutItem</code> na tabela). As trust policies exigem <code>aws:SourceAccount</code> (proteção contra <i>confused deputy</i>).</li>
+    <li><b>Acesso humano:</b> administradores entram como membros convidados do projeto AWS, sem usuários IAM nem chaves de acesso de longa duração.</li>
+    <li><b>API:</b> API Key obrigatória e usage plan com throttling e cota diária.</li>
+    <li><b>Criptografia em repouso:</b> DynamoDB, S3 e SNS com KMS. O tópico <code>alertas-criticos</code> usa chave própria (<code>alias/tc4-alertas</code>, com rotação automática), porque os alarmes do CloudWatch não conseguem publicar em tópico cifrado com a chave gerenciada <code>aws/sns</code>.</li>
+    <li><b>S3:</b> bloqueio total de acesso público, <i>Object Ownership</i> imposto, versionamento e política que nega qualquer acesso sem HTTPS.</li>
+    <li><b>Segredos fora do repositório:</b> o repositório é público; o e-mail dos administradores fica no Parameter Store (<code>/tc4-feedback/admin-email</code>) e é lido pelo CloudFormation no deploy.</li>
+    <li><b>CI/CD sem chaves:</b> o GitHub entra pela conexão CodeConnections; o CloudFormation usa uma role de deploy restrita aos recursos do projeto (prefixos <code>tc4-*</code>, tabela <code>Avaliacoes</code>, tópicos e bucket da stack).</li>
+    <li><b>Custo:</b> todos os serviços são cobrados por uso. O projeto roda dentro do plano gratuito da AWS.</li>
+  </ul>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">8. Monitoramento</h2>
+  <table>
+    <thead><tr><th>Recurso</th><th>O que entrega</th></tr></thead>
+    <tbody>
+      <tr><td>CloudWatch Logs</td><td>Logs estruturados em JSON (campo <code>servico</code> por função), retenção de 14 dias; consultáveis no Logs Insights</td></tr>
+      <tr><td>Métricas de negócio (EMF)</td><td>Namespace <code>TC4Feedback</code>: <code>Avaliacoes</code> (contagem) e <code>Nota</code>, por <code>Urgencia</code> e no total. Emitidas como uma linha JSON no log, sem chamada de API nem permissão extra</td></tr>
+      <tr><td>AWS X-Ray</td><td>Tracing ativo no API Gateway e nas três funções</td></tr>
+      <tr><td>Alarmes</td><td><code>tc4-recebe-avaliacao-erros</code>, <code>tc4-notifica-urgencia-erros</code>, <code>tc4-gera-relatorio-erros</code>: <code>Errors &gt; 0</code> em 5 minutos → e-mail via <code>alertas-criticos</code></td></tr>
+      <tr><td>Dashboard <code>tc4-feedback</code></td><td>Avaliações por urgência (série e pizza), nota média, invocações, erros e duração p95 das funções, requisições/4XX/5XX e latência da API, estado dos alarmes</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">9. Decisões técnicas</h2>
+
+  <div class="adr">
+    <h4>9.1 Serverless com AWS Lambda</h4>
+    <p class="why"><b>Decisão:</b> três funções Lambda, cada uma com um gatilho e uma responsabilidade.</p>
+    <p class="why"><b>Por quê:</b> a carga é intermitente (avaliações esporádicas e um relatório por semana). Lambda cobra só pelo uso, escala sozinha e não exige servidor. Funções separadas permitem permissões, alarmes e deploy independentes.</p>
+    <p class="alt"><b>Alternativa considerada:</b> um único serviço em container (ECS/Fargate) — custo fixo e operação maior para pouco tráfego.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.2 Java 21 + Quarkus com SnapStart (JVM)</h4>
+    <p class="why"><b>Decisão:</b> Quarkus nas três funções, rodando na JVM com Lambda SnapStart, em arm64 (Graviton).</p>
+    <p class="why"><b>Por quê:</b> mantém a stack Java do curso com injeção de dependência, validação (Hibernate Validator) e testes do Quarkus. O SnapStart restaura um snapshot da JVM já inicializada e reduz o cold start sem a complexidade de compilação nativa (GraalVM). Graviton custa menos por ms. As opções <code>-XX:TieredStopAtLevel=1</code> reduzem o tempo de inicialização.</p>
+    <p class="alt"><b>Alternativa considerada:</b> build nativo com GraalVM — cold start menor, mas build mais lento e restrições de reflexão.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.3 DynamoDB com partição por dia</h4>
+    <p class="why"><b>Decisão:</b> tabela única com PK <code>dia</code> (horário de Brasília) e SK <code>criadoEm#id</code>, cobrança sob demanda.</p>
+    <p class="why"><b>Por quê:</b> o único padrão de leitura é "avaliações de um dia" para o relatório; a PK por dia torna isso uma <code>Query</code> direta, sem <code>Scan</code>. O volume esperado cabe com folga no limite de uma partição. DynamoDB também oferece o Stream usado nos alertas.</p>
+    <p class="alt"><b>Alternativa considerada:</b> banco relacional (RDS/Aurora) — custo fixo e sem disparo nativo de eventos por inserção.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.4 Alertas por DynamoDB Stream com filtro de eventos</h4>
+    <p class="why"><b>Decisão:</b> <code>notifica-urgencia</code> é acionada pelo Stream da tabela, com filtro <code>eventName = INSERT</code> e <code>urgencia = CRITICA</code>.</p>
+    <p class="why"><b>Por quê:</b> desacopla recebimento e notificação — a API responde sem esperar o e-mail e continua funcionando se o SNS falhar. O filtro descarta eventos não críticos antes de invocar a função (sem custo por eles). <code>ReportBatchItemFailures</code> e <code>BisectBatchOnFunctionError</code> reprocessam só os registros que falharam, com até 3 tentativas.</p>
+    <p class="alt"><b>Alternativa considerada:</b> a função de recebimento publicar direto no SNS — acopla as responsabilidades e faz a API depender do envio do alerta.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.5 SNS para e-mail</h4>
+    <p class="why"><b>Decisão:</b> dois tópicos SNS com inscrição por e-mail: <code>alertas-criticos</code> e <code>relatorio-semanal</code>.</p>
+    <p class="why"><b>Por quê:</b> entrega e-mail sem configurar domínio nem sair do sandbox (como exigiria o SES), e permite adicionar outros administradores ou canais (SMS, fila, webhook) só criando inscrições. Os alarmes do CloudWatch reaproveitam o tópico de alertas.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.6 EventBridge Scheduler com fuso de Brasília</h4>
+    <p class="why"><b>Decisão:</b> agendamento <code>cron(0 8 ? * MON *)</code> com <code>ScheduleExpressionTimezone: America/Sao_Paulo</code>, e o dia de cada avaliação calculado no mesmo fuso.</p>
+    <p class="why"><b>Por quê:</b> o relatório é de negócio: "segunda às 08:00" e "semana de segunda a domingo" precisam valer no horário local, não em UTC. Uma avaliação enviada às 22:00 de domingo em Brasília (01:00 de segunda em UTC) pertence a domingo. A função também aceita <code>{"inicio":"AAAA-MM-DD"}</code> para gerar o relatório de qualquer semana sob demanda.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.7 Relatório em JSON no S3</h4>
+    <p class="why"><b>Decisão:</b> cada relatório é salvo como JSON em <code>relatorios/AAAA/semana-AAAA-MM-DD.json</code>, com versionamento no bucket.</p>
+    <p class="why"><b>Por quê:</b> histórico permanente e barato, legível por pessoas e por ferramentas (ex.: Athena), e sem o limite de tamanho do e-mail. O versionamento preserva relatórios regerados.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.8 API Key + usage plan para os estudantes</h4>
+    <p class="why"><b>Decisão:</b> API Gateway REST com API Key obrigatória e usage plan com throttling e cota.</p>
+    <p class="why"><b>Por quê:</b> o requisito é separar perfis, não identificar cada estudante. A API Key bloqueia chamadas anônimas e o usage plan protege contra abuso e custo inesperado, sem a complexidade de um provedor de identidade.</p>
+    <p class="alt"><b>Evolução possível:</b> Amazon Cognito para autenticação individual dos estudantes (ver seção 14).</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.9 Métricas com Embedded Metric Format</h4>
+    <p class="why"><b>Decisão:</b> <code>recebe-avaliacao</code> escreve as métricas de negócio como uma linha JSON no formato EMF.</p>
+    <p class="why"><b>Por quê:</b> o CloudWatch extrai a métrica do log de forma assíncrona: não há chamada <code>PutMetricData</code>, latência extra nem permissão IAM adicional. Falha ao gerar a métrica nunca derruba o recebimento.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.10 Infraestrutura como código com AWS SAM</h4>
+    <p class="why"><b>Decisão:</b> toda a aplicação em um único <code>template.yaml</code> (SAM); o pipeline em <code>cicd/pipeline.yaml</code> (CloudFormation), em stacks separadas.</p>
+    <p class="why"><b>Por quê:</b> SAM simplifica funções, eventos (API, Stream, Scheduler), aliases e SnapStart. Separar a stack do pipeline evita que um deploy da aplicação altere a própria esteira.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.11 CI/CD com CodePipeline em vez de GitHub Actions + OIDC</h4>
+    <p class="why"><b>Decisão:</b> deploy pelo AWS CodePipeline (CodeConnections → CodeBuild → CloudFormation); GitHub Actions só roda os testes.</p>
+    <p class="why"><b>Por quê:</b> a política gerenciada da conta (SCP) bloqueia <code>iam:*Provider*</code>, então não é possível cadastrar o GitHub como provedor OIDC. Guardar chaves de acesso no GitHub foi descartado por segurança. Com CodeConnections nenhuma credencial sai da AWS.</p>
+  </div>
+
+  <div class="adr">
+    <h4>9.12 Módulo <code>core</code> compartilhado</h4>
+    <p class="why"><b>Decisão:</b> projeto Maven multi-módulo; o domínio (<code>Avaliacao</code>, <code>Urgencia</code>, fuso de referência) fica em <code>core</code>, sem dependência de AWS.</p>
+    <p class="why"><b>Por quê:</b> a regra de classificação e o cálculo do dia existem em um só lugar e são testados isoladamente; as funções dependem de interfaces (<code>AvaliacaoRepository</code>, <code>PublicadorAlerta</code>, <code>ArmazenamentoRelatorio</code>…) com implementações AWS injetadas, o que facilita os testes com mocks.</p>
+  </div>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">10. Testes automatizados</h2>
+  <p>
+    <b>71 testes</b> em 13 classes (JUnit 5, AssertJ, Mockito, REST Assured e <code>@QuarkusTest</code>), executados com
+    <code>mvn verify</code> localmente, no GitHub Actions e no CodeBuild antes de cada deploy.
+  </p>
+  <table>
+    <thead><tr><th>Módulo</th><th>Classes de teste</th><th>O que cobre</th></tr></thead>
+    <tbody>
+      <tr><td><code>core</code></td><td><code>UrgenciaTest</code>, <code>AvaliacaoTest</code></td><td>Classificação por faixa de nota e rejeição de notas fora de 0–10; invariantes da avaliação; dia e virada do dia no horário de Brasília</td></tr>
+      <tr><td><code>recebe-avaliacao</code></td><td><code>AvaliacaoResourceTest</code>, <code>DynamoDbAvaliacaoRepositoryTest</code>, <code>MetricasAvaliacaoTest</code></td><td>Respostas 201/400 da API; item gravado no DynamoDB; formato EMF</td></tr>
+      <tr><td><code>notifica-urgencia</code></td><td><code>NotificaUrgenciaHandlerTest</code>, <code>AvaliacaoImageTest</code>, <code>AlertaTest</code></td><td>Publicação do alerta; falha parcial do lote (<code>batchItemFailures</code>); registros malformados; conteúdo do e-mail</td></tr>
+      <tr><td><code>gera-relatorio</code></td><td><code>GeraRelatorioHandlerTest</code>, <code>RelatorioTest</code>, <code>SemanaTest</code>, <code>EmailRelatorioTest</code>, <code>DynamoDbAvaliacaoConsultaTest</code></td><td>Semana anterior e semana informada; média, contagens por dia e urgência; limite de itens no e-mail; conversão do item da tabela</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="block">Teste de ponta a ponta em produção</h3>
+  <p>Executado em 29/10/2026 no ambiente implantado:</p>
+  <table>
+    <thead><tr><th>Cenário</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST</code> com nota 2</td><td><code>201</code>, urgência <code>CRITICA</code>, item no DynamoDB e alerta publicado no SNS</td></tr>
+      <tr><td><code>POST</code> com nota 9</td><td><code>201</code>, urgência <code>BAIXA</code>, nenhum alerta (filtro do Stream)</td></tr>
+      <tr><td><code>POST</code> com nota 11</td><td><code>400</code> — "nota deve estar entre 0 e 10"</td></tr>
+      <tr><td><code>POST</code> sem API Key</td><td><code>403</code></td></tr>
+      <tr><td>Relatório da semana 26/10–01/11 sob demanda</td><td>JSON no S3 (16 avaliações, média 5,00; 9 críticas, 7 baixas) e e-mail publicado</td></tr>
+      <tr><td>Alarmes e logs</td><td>3 alarmes em <code>OK</code>, nenhum erro nos logs</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">11. CI/CD</h2>
+<pre><code>GitHub (push na main)
+   │  CodeConnections (sem chaves)
+   ▼
+CodePipeline tc4-feedback  ──  Fonte → Build → Deploy
+   │
+   ├─ CodeBuild tc4-feedback-build:  mvn verify  +  sam package  (relatório JUnit no console)
+   │
+   └─ CloudFormation: stack tc4-feedback  (role de deploy restrita)</code></pre>
+  <ul>
+    <li><b>Gatilho:</b> push na <code>main</code>. Commits que só alteram <code>docs/**</code>, <code>**/*.md</code>, <code>.github/**</code> ou <code>cicd/**</code> não disparam deploy.</li>
+    <li><b>Execução em fila</b> (<code>QUEUED</code>): pushes seguidos não se atropelam.</li>
+    <li><b>Testes bloqueiam o deploy:</b> se <code>mvn verify</code> falhar, o CloudFormation não roda.</li>
+    <li><b>Artefatos:</b> bucket S3 privado e cifrado, com expiração em 30 dias e cache do Maven.</li>
+    <li><b>GitHub Actions</b> (<code>.github/workflows/ci.yml</code>): roda os testes em todo push e pull request, sem nenhuma credencial AWS.</li>
+    <li><b>Deploy seguro das funções:</b> cada deploy publica uma nova versão e move o alias <code>live</code>; a API e os gatilhos sempre chamam o alias.</li>
+  </ul>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">12. Como rodar o projeto</h2>
+
+  <h3 class="block">Pré-requisitos</h3>
+  <ul>
+    <li>Java 21 e Maven 3.9+</li>
+    <li>AWS CLI v2 e AWS SAM CLI</li>
+    <li>Acesso ao projeto AWS na região <code>us-east-2</code>, com o perfil <code>tc4</code> configurado</li>
+  </ul>
+
+  <h3 class="block">1. Build e testes locais</h3>
+<pre><code>git clone https://github.com/rafatespindola/tc4-feedback.git
+cd tc4-feedback
+mvn verify          # roda os testes e gera */target/function.zip</code></pre>
+
+  <h3 class="block">2. Configurar o e-mail dos administradores (uma vez)</h3>
+<pre><code>aws login --profile tc4
+aws ssm put-parameter --name /tc4-feedback/admin-email --type String \
+  --value &lt;email&gt; --overwrite --profile tc4 --region us-east-2</code></pre>
+
+  <h3 class="block">3a. Deploy manual</h3>
+<pre><code>mvn -DskipTests package
+sam deploy          # stack tc4-feedback, us-east-2 (configurado em samconfig.toml)</code></pre>
+
+  <h3 class="block">3b. Deploy automático (CI/CD)</h3>
+<pre><code>aws cloudformation deploy --stack-name tc4-feedback-cicd \
+  --template-file cicd/pipeline.yaml --capabilities CAPABILITY_IAM \
+  --profile tc4 --region us-east-2</code></pre>
+  <p>
+    Depois, autorize a conexão uma única vez no console: <b>Developer Tools &gt; Settings &gt; Connections &gt;
+    tc4-feedback-github &gt; Update pending connection</b>. A partir daí, todo push na <code>main</code> faz o deploy.
+  </p>
+
+  <div class="callout info">
+    <b>Confirmação dos e-mails:</b> no primeiro deploy a AWS envia um e-mail de confirmação para cada tópico
+    (<code>alertas-criticos</code> e <code>relatorio-semanal</code>). As mensagens só chegam depois de clicar em
+    <b>Confirm subscription</b>.
+  </div>
+
+  <h3 class="block">4. Enviar uma avaliação</h3>
+<pre><code>URL=$(aws cloudformation describe-stacks --stack-name tc4-feedback --profile tc4 \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+KEY_ID=$(aws cloudformation describe-stacks --stack-name tc4-feedback --profile tc4 \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiKeyId'].OutputValue" --output text)
+KEY=$(aws apigateway get-api-key --api-key "$KEY_ID" --include-value \
+  --profile tc4 --query value --output text)
+
+curl -i -X POST "$URL" -H "x-api-key: $KEY" -H 'Content-Type: application/json' \
+  -d '{"descricao":"Áudio da aula cortando","nota":2}'</code></pre>
+  <p>Com nota de 0 a 3, o alerta chega por e-mail em alguns segundos.</p>
+
+  <h3 class="block">5. Gerar o relatório sem esperar a segunda-feira</h3>
+<pre><code># semana anterior (comportamento do agendamento)
+aws lambda invoke --function-name tc4-gera-relatorio --payload '{}' \
+  --cli-binary-format raw-in-base64-out --profile tc4 --region us-east-2 saida.json
+
+# uma semana específica (a data deve ser uma segunda-feira)
+aws lambda invoke --function-name tc4-gera-relatorio --payload '{"inicio":"2026-10-26"}' \
+  --cli-binary-format raw-in-base64-out --profile tc4 --region us-east-2 saida.json</code></pre>
+
+  <h3 class="block">6. Acompanhar</h3>
+  <ul>
+    <li>Dashboard: output <code>DashboardUrl</code> da stack (CloudWatch &gt; Dashboards &gt; <code>tc4-feedback</code>).</li>
+    <li>Relatórios: output <code>BucketRelatorios</code>, prefixo <code>relatorios/</code>.</li>
+    <li>Logs: grupos <code>/aws/lambda/tc4-*</code> no CloudWatch Logs.</li>
+  </ul>
+
+  <h3 class="block">7. Remover os recursos</h3>
+<pre><code>sam delete --stack-name tc4-feedback --profile tc4 --region us-east-2
+aws cloudformation delete-stack --stack-name tc4-feedback-cicd --profile tc4 --region us-east-2</code></pre>
+  <p>Os buckets S3 precisam ser esvaziados (incluindo versões) antes da remoção.</p>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">13. Estrutura do repositório</h2>
+<pre><code>tc4-feedback/
+├── pom.xml                      # parent Maven (módulos + versões)
+├── core/                        # domínio: Avaliacao, Urgencia, regra de classificação
+├── recebe-avaliacao/            # λ HTTP  (POST /avaliacao)
+├── notifica-urgencia/           # λ DynamoDB Stream
+├── gera-relatorio/              # λ agendada (relatório semanal)
+├── template.yaml                # infra SAM: tabela, SNS, S3, KMS, API, scheduler, alarmes, dashboard
+├── samconfig.toml               # parâmetros do sam deploy
+├── buildspec.yml                # CodeBuild
+├── cicd/pipeline.yaml           # CodePipeline + CodeBuild + roles (stack tc4-feedback-cicd)
+├── .github/workflows/ci.yml     # testes em push/PR
+├── docs/
+│   ├── ARQUITETURA.md
+│   ├── RelatorioTecnicoTC4Fase4.html / .pdf
+│   └── GITHUB_VIDEO_ALUNOS.txt
+└── README.md</code></pre>
+</section>
+
+<section class="topic">
+  <h2 class="section-title">14. Observações e limitações conhecidas</h2>
+  <ul>
+    <li><b>Estudantes não são identificados individualmente:</b> a API Key é compartilhada pelo perfil. Para saber quem avaliou ou limitar uma avaliação por aluno/aula, o próximo passo seria autenticação com Amazon Cognito no API Gateway.</li>
+    <li><b>Relatórios são consultados no console AWS:</b> não há interface própria nem endpoint de leitura. Uma evolução seria <code>GET /relatorios</code> restrito a administradores.</li>
+    <li><b>E-mail via SNS:</b> o texto é simples (sem HTML) e cada destinatário precisa confirmar a inscrição. O e-mail do relatório lista até 100 avaliações; o restante fica no JSON do S3.</li>
+    <li><b>Região única:</b> toda a solução roda em <code>us-east-2</code>, sem replicação entre regiões.</li>
+    <li><b>Relatório regerado sobrescreve o arquivo da semana:</b> a versão anterior continua disponível pelo versionamento do bucket.</li>
+    <li><b>Dados de teste:</b> as avaliações do teste de ponta a ponta têm o prefixo <code>[TESTE E2E]</code> na descrição e foram mantidas como evidência.</li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>

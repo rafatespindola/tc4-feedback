@@ -1,6 +1,6 @@
 # TC4 Feedback
 
-Plataforma serverless (AWS, `us-east-2`) para receber avaliações de aulas, alertar sobre itens críticos e gerar relatório semanal. Arquitetura completa em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+Plataforma serverless (AWS, `us-east-2`) para receber avaliações de aulas, alertar sobre itens críticos e gerar relatório semanal. Arquitetura completa em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Relatório técnico da entrega (decisões técnicas, testes, como rodar): [docs/RelatorioTecnicoTC4Fase4.pdf](docs/RelatorioTecnicoTC4Fase4.pdf).
 
 **Perfis:** o **estudante** avalia aulas pela API (`POST /avaliacao` com API Key); o **administrador** recebe alertas críticos e o relatório semanal por e-mail e consulta o histórico no S3 e o dashboard CloudWatch. Detalhes em [Perfis de acesso](docs/ARQUITETURA.md#perfis-de-acesso).
 
