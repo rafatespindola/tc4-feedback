@@ -20,7 +20,7 @@ Resources:
   GitHubConnection:
     Type: AWS::CodeConnections::Connection
     Properties:
-      ConnectionName: tc4-feedback-github
+      ConnectionName: notificahub-github
       ProviderType: GitHub
 
   ArtefatosBucket:
@@ -430,7 +430,7 @@ Resources:
 
 Outputs:
   ConnectionArn:
-    Description: Autorizar no console (Developer Tools > Settings > Connections > tc4-feedback-github > Update pending connection)
+    Description: Autorizar no console (Developer Tools > Settings > Connections > notificahub-github > Update pending connection)
     Value: !Ref GitHubConnection
   PipelineUrl:
     Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/tc4-feedback/view?region=${AWS::Region}'
