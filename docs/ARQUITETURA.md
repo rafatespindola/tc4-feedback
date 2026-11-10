@@ -106,7 +106,7 @@ A separação é estrutural: o estudante só alcança a API de escrita; leitura 
 ## Estrutura do repositório
 
 ```
-tc4-feedback/
+NotificaHub/
 ├── pom.xml                      # parent (módulos + versões)
 ├── core/                        # domínio: Avaliacao, Urgencia, regra de classificação
 ├── recebe-avaliacao/            # λ HTTP
