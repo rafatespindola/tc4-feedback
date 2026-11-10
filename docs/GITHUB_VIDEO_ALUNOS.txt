@@ -2,7 +2,7 @@ Link do vídeo de apresentação:
    [a definir]
 
 Github:
-  https://github.com/GastroHubDev/NotificaHub
+  https://github.com/rafatespindola/tc4-feedback
 
 Relatório técnico:
   docs/RelatorioTecnicoTC4Fase4.pdf

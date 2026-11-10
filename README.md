@@ -33,7 +33,7 @@ Todo push na `main` dispara o **AWS CodePipeline** `tc4-feedback`:
 GitHub (main) ──CodeConnections──▶ CodeBuild: mvn verify + sam package ──▶ CloudFormation: stack tc4-feedback
 ```
 
-- Sem chaves de acesso em lugar nenhum: o GitHub entra pela conexão `notificahub-github` (CodeConnections)
+- Sem chaves de acesso em lugar nenhum: o GitHub entra pela conexão `tc4-feedback-github` (CodeConnections)
   e o CloudFormation usa uma role de deploy limitada aos recursos do projeto.
 - Mudanças só em `docs/`, `*.md`, `.github/` ou `cicd/` não disparam deploy.
 - O **GitHub Actions** (`.github/workflows/ci.yml`) roda os testes em todo push e pull request.
@@ -45,7 +45,7 @@ GitHub (main) ──CodeConnections──▶ CodeBuild: mvn verify + sam package
   ```
 
   Depois de criar, autorize a conexão uma vez no console: **Developer Tools > Settings > Connections >
-  notificahub-github > Update pending connection**.
+  tc4-feedback-github > Update pending connection**.
 
 > Por que não GitHub Actions + OIDC? A política gerenciada do projeto (SCP) bloqueia `iam:*Provider*`,
 > então não é possível cadastrar o GitHub como provedor OIDC.

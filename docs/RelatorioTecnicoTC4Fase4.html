@@ -270,7 +270,7 @@
     <p><b>🎥 Vídeo de apresentação do projeto:</b></p>
     <p>[link do vídeo — a definir]</p>
     <p><b>Repositório:</b></p>
-    <a href="https://github.com/GastroHubDev/NotificaHub">https://github.com/GastroHubDev/NotificaHub</a>
+    <a href="https://github.com/rafatespindola/tc4-feedback">https://github.com/rafatespindola/tc4-feedback</a>
   </div>
 </div>
 
@@ -737,8 +737,8 @@ CodePipeline tc4-feedback  ──  Fonte → Build → Deploy
   </ul>
 
   <h3 class="block">1. Build e testes locais</h3>
-<pre><code>git clone https://github.com/GastroHubDev/NotificaHub.git
-cd NotificaHub
+<pre><code>git clone https://github.com/rafatespindola/tc4-feedback.git
+cd tc4-feedback
 mvn verify          # roda os testes e gera */target/function.zip</code></pre>
 
   <h3 class="block">2. Configurar o e-mail dos administradores (uma vez)</h3>
@@ -756,7 +756,7 @@ sam deploy          # stack tc4-feedback, us-east-2 (configurado em samconfig.to
   --profile tc4 --region us-east-2</code></pre>
   <p>
     Depois, autorize a conexão uma única vez no console: <b>Developer Tools &gt; Settings &gt; Connections &gt;
-    notificahub-github &gt; Update pending connection</b>. A partir daí, todo push na <code>main</code> faz o deploy.
+    tc4-feedback-github &gt; Update pending connection</b>. A partir daí, todo push na <code>main</code> faz o deploy.
   </p>
 
   <div class="callout info">
@@ -801,7 +801,7 @@ aws cloudformation delete-stack --stack-name tc4-feedback-cicd --profile tc4 --r
 
 <section class="topic">
   <h2 class="section-title">13. Estrutura do repositório</h2>
-<pre><code>NotificaHub/
+<pre><code>tc4-feedback/
 ├── pom.xml                      # parent Maven (módulos + versões)
 ├── core/                        # domínio: Avaliacao, Urgencia, regra de classificação
 ├── recebe-avaliacao/            # λ HTTP  (POST /avaliacao)
