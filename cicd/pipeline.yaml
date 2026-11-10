@@ -6,7 +6,7 @@ Description: >-
 Parameters:
   RepositorioGitHub:
     Type: String
-    Default: rafatespindola/tc4-feedback
+    Default: GastroHubDev/NotificaHub
   Branch:
     Type: String
     Default: main
